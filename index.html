@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>מחולל כרטיסי ברכה</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/lucide-react@latest/dist/umd/lucide-react.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        .hebrew-text {
+            direction: rtl;
+            text-align: right;
+        }
+        .loading-spinner {
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .error-boundary {
+            color: #dc2626;
+            background-color: #fef2f2;
+            border: 1px solid #fecaca;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin: 1rem 0;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo, useRef } = React;
+        const { Heart, Gift, Sparkles, Download, Share2, AlertCircle } = lucideReact;
+
+        // Error Boundary Component
+        class ErrorBoundary extends React.Component {
+            constructor(props) {
+                super(props);
+                this.state = { hasError: false, error: null };
+            }
+
+            static getDerivedStateFromError(error) {
+                return { hasError: true, error: error };
+            }
+
+            componentDidCatch(error, errorInfo) {
+                console.error('Error caught by boundary:', error, errorInfo);
+                this.save_error_to_storage(error, errorInfo);
+            }
+
+            save_error_to_storage(error, errorInfo) {
+                try {
+                    const errorData = {
+                        error: error.toString(),
+                        errorInfo: errorInfo,
+                        timestamp: new Date().toISOString()
+                    };
+                    localStorage.setItem('app_last_error', JSON.stringify(errorData));
+                } catch (e) {
+                    console.error('Failed to save error to storage:', e);
+                }
+            }
+
+            render() {
+                if (this.state.hasError) {
+                    return (
+                        <div className="error-boundary">
+                            <div className="flex items-center gap-2 mb-2">
+                                <AlertCircle size={20} />
+                                <h2 className="text-lg font-semibold">אירעה שגיאה באפליקציה</h2>
+                            </div>
+                            <p className="text-sm">אנא רענן את הדף ונסה שוב.</p>
+                            <button 
+                                onClick={() => window.location.reload()}
+                                className="mt-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+                            >
+                                רענן דף
+                            </button>
+                        </div>
+                    );
+                }
+
+                return this.props.children;
+            }
+        }
+
+        // Mock Claude API for development
+        const mock_claude_api = {
+            complete: async (prompt) => {
+                // Simulate API delay
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
+                // Mock response based on prompt content
+                if (prompt.includes('יום הולדת')) {
+                    return 'מזל טוב ליום הולדתך! שתזכה לשנה מלאה בבריאות, אושר והצלחה. שכל חלומותיך יתגשמו ושתמשיך לשמח את כל הסובבים אותך.';
+                } else if (prompt.includes('חתונה')) {
+                    return 'מזל טוב על נישואיכם! שתזכו לבית נאמן בישראל, מלא באהבה, כבוד הדדי ואושר אמיתי. שתבנו יחד עתיד מזהיר ומלא ברכה.';
+                } else if (prompt.includes('בר מצווה') || prompt.includes('בת מצווה')) {
+                    return 'מזל טוב על הבר מצווה! היום אתה נכנס לעולם הבוגרים. שתמיד תלך בדרך הטובה והנכונה ותגדל להיות אדם טוב וישר.';
+                } else {
+                    return 'מזל טוב! שתמיד תהיה מוקף באהבה ובשמחה. שכל הטוב בעולם יגיע אליך ותמיד תמצא סיבות לחייך.';
+                }
+            }
+        };
+
+        // Initialize Claude API
+        if (typeof window.claude === 'undefined') {
+            window.claude = mock_claude_api;
+        }
+
+        const GreetingCardGenerator = () => {
+            const [form_data, set_form_data] = useState({
+                eventType: '',
+                recipientName: '',
+                recipientAge: '',
+                relationship: '',
+                personalDetails: '',
+                tone: '',
+                additionalNotes: ''
+            });
+            
+            const [generated_card, set_generated_card] = useState(null);
+            const [is_generating, set_is_generating] = useState(false);
+            const [error_message, set_error_message] = useState('');
+
+            const event_types = [
+                { value: 'birthday', label: 'יום הולדת', icon: '🎂' },
+                { value: 'wedding', label: 'חתונה', icon: '💒' },
+                { value: 'barmitzvah', label: 'בר/בת מצווה', icon: '📜' },
+                { value: 'engagement', label: 'אירוסין', icon: '💍' },
+                { value: 'graduation', label: 'סיום לימודים', icon: '🎓' },
+                { value: 'newjob', label: 'עבודה חדשה', icon: '💼' },
+                { value: 'holiday', label: 'חג', icon: '✨' },
+                { value: 'anniversary', label: 'יום נישואין', icon: '❤️' }
+            ];
+
+            const tones = [
+                { value: 'warm', label: 'חם ואישי' },
+                { value: 'funny', label: 'מצחיק' },
+                { value: 'formal', label: 'רשמי' },
+                { value: 'emotional', label: 'רגשי' },
+                { value: 'casual', label: 'קליל' }
+            ];
+
+            // Load data from localStorage on component mount
+            useEffect(() => {
+                try {
+                    const saved_data = localStorage.getItem('greeting_card_form_data');
+                    if (saved_data) {
+                        set_form_data(JSON.parse(saved_data));
+                    }
+                } catch (error) {
+                    console.error('Failed to load saved data:', error);
+                }
+            }, []);
+
+            // Save data to localStorage whenever form_data changes
+            useEffect(() => {
+                try {
+                    localStorage.setItem('greeting_card_form_data', JSON.stringify(form_data));
+                } catch (error) {
+                    console.error('Failed to save data:', error);
+                }
+            }, [form_data]);
+
+            const handle_input_change = (field, value) => {
+                set_form_data(prev => ({
+                    ...prev,
+                    [field]: value
+                }));
+                set_error_message(''); // Clear error when user starts typing
+            };
+
+            const validate_form = () => {
+                if (!form_data.eventType) {
+                    set_error_message('אנא בחר סוג אירוע');
+                    return false;
+                }
+                if (!form_data.recipientName.trim()) {
+                    set_error_message('אנא הכנס שם מקבל הברכה');
+                    return false;
+                }
+                if (!form_data.tone) {
+                    set_error_message('אנא בחר טון לברכה');
+                    return false;
+                }
+                return true;
+            };
+
+            const generate_greeting = async () => {
+                if (!validate_form()) {
+                    return;
+                }
+
+                set_is_generating(true);
+                set_error_message('');
+                
+                try {
+                    const selected_event = event_types.find(e => e.value === form_data.eventType);
+                    const selected_tone = tones.find(t => t.value === form_data.tone);
+                    
+                    const prompt = `
+                    צור ברכה מותאמת אישית עבור ${selected_event.label} בטון ${selected_tone.label}.
+                    
+                    פרטי מקבל הברכה:
+                    - שם: ${form_data.recipientName}
+                    ${form_data.recipientAge ? `- גיל: ${form_data.recipientAge}` : ''}
+                    ${form_data.relationship ? `- הקשר: ${form_data.relationship}` : ''}
+                    
+                    ${form_data.personalDetails ? `פרטים אישיים: ${form_data.personalDetails}` : ''}
+                    
+                    ${form_data.additionalNotes ? `הערות נוספות: ${form_data.additionalNotes}` : ''}
+                    
+                    הנחיות חשובות:
+                    - כתוב בעברית בלבד
+                    - צור ברכה אנושית וטבעיה שלא נשמעת מלאכותית
+                    - השתמש בביטויים ישראליים טבעיים
+                    - הימנע מביטויים קלישאתיים או גנריים
+                    - התאם את האורך לסוג האירוע (2-4 משפטים)
+                    - הקפד על טון ${selected_tone.label}
+                    - שלב את הפרטים האישיים בצורה חלקה
+                    
+                    החזר רק את טקסט הברכה, ללא הסברים או הערות נוספות.
+                    `;
+
+                    const response = await window.claude.complete(prompt);
+                    
+                    const card_data = {
+                        text: response,
+                        eventType: form_data.eventType,
+                        recipientName: form_data.recipientName,
+                        eventIcon: selected_event.icon,
+                        createdAt: new Date().toISOString()
+                    };
+
+                    set_generated_card(card_data);
+                    
+                    // Save generated card to localStorage
+                    try {
+                        const saved_cards = JSON.parse(localStorage.getItem('generated_cards') || '[]');
+                        saved_cards.push(card_data);
+                        // Keep only last 10 cards
+                        if (saved_cards.length > 10) {
+                            saved_cards.splice(0, saved_cards.length - 10);
+                        }
+                        localStorage.setItem('generated_cards', JSON.stringify(saved_cards));
+                    } catch (error) {
+                        console.error('Failed to save generated card:', error);
+                    }
+                    
+                } catch (error) {
+                    console.error('שגיאה ביצירת הברכה:', error);
+                    set_error_message('אירעה שגיאה ביצירת הברכה. אנא נסה שוב.');
+                } finally {
+                    set_is_generating(false);
+                }
+            };
+
+            const get_card_background = useMemo(() => {
+                const backgrounds = {
+                    birthday: 'bg-gradient-to-br from-pink-400 via-purple-400 to-indigo-400',
+                    wedding: 'bg-gradient-to-br from-rose-300 via-pink-300 to-red-300',
+                    barmitzvah: 'bg-gradient-to-br from-blue-400 via-indigo-400 to-purple-400',
+                    engagement: 'bg-gradient-to-br from-yellow-300 via-orange-300 to-red-300',
+                    graduation: 'bg-gradient-to-br from-green-400 via-teal-400 to-blue-400',
+                    newjob: 'bg-gradient-to-br from-gray-400 via-slate-400 to-zinc-400',
+                    holiday: 'bg-gradient-to-br from-amber-400 via-yellow-400 to-orange-400',
+                    anniversary: 'bg-gradient-to-br from-red-400 via-rose-400 to-pink-400'
+                };
+                return (eventType) => backgrounds[eventType] || 'bg-gradient-to-br from-blue-400 to-purple-400';
+            }, []);
+
+            const reset_form = () => {
+                set_form_data({
+                    eventType: '',
+                    recipientName: '',
+                    recipientAge: '',
+                    relationship: '',
+                    personalDetails: '',
+                    tone: '',
+                    additionalNotes: ''
+                });
+                set_generated_card(null);
+                set_error_message('');
+            };
+
+            const handle_share = async () => {
+                try {
+                    if (navigator.share) {
+                        await navigator.share({
+                            title: 'כרטיס ברכה',
+                            text: generated_card.text
+                        });
+                    } else {
+                        await navigator.clipboard.writeText(generated_card.text);
+                        alert('הברכה הועתקה ללוח');
+                    }
+                } catch (error) {
+                    console.error('Share failed:', error);
+                    // Fallback to manual copy
+                    try {
+                        await navigator.clipboard.writeText(generated_card.text);
+                        alert('הברכה הועתקה ללוח');
+                    } catch (clipboardError) {
+                        console.error('Clipboard failed:', clipboardError);
+                        alert('לא ניתן לשתף או להעתיק את הברכה');
+                    }
+                }
+            };
+
+            return (
+                <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4 hebrew-text">
+                    <div className="max-w-4xl mx-auto">
+                        <div className="text-center mb-8">
+                            <div className="inline-flex items-center gap-2 mb-4">
+                                <Sparkles className="text-purple-600" size={32} />
+                                <h1 className="text-4xl font-bold text-gray-800">מחולל כרטיסי ברכה</h1>
+                                <Sparkles className="text-purple-600" size={32} />
+                            </div>
+                            <p className="text-gray-600 text-lg">צור כרטיסי ברכה מותאמים אישית לכל אירוע</p>
+                        </div>
+
+                        {error_message && (
+                            <div className="error-boundary mb-6">
+                                <div className="flex items-center gap-2">
+                                    <AlertCircle size={20} />
+                                    <span>{error_message}</span>
+                                </div>
+                            </div>
+                        )}
+
+                        {!generated_card ? (
+                            <div className="bg-white rounded-2xl shadow-xl p-8">
+                                <div className="grid md:grid-cols-2 gap-6">
+                                    {/* עמודה ראשונה */}
+                                    <div className="space-y-6">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                סוג האירוע *
+                                            </label>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                {event_types.map(event => (
+                                                    <button
+                                                        key={event.value}
+                                                        onClick={() => handle_input_change('eventType', event.value)}
+                                                        className={`p-3 rounded-lg border-2 transition-all flex items-center gap-2 text-sm ${
+                                                            form_data.eventType === event.value
+                                                                ? 'border-purple-500 bg-purple-50 text-purple-700'
+                                                                : 'border-gray-200 hover:border-purple-300'
+                                                        }`}
+                                                    >
+                                                        <span>{event.icon}</span>
+                                                        <span>{event.label}</span>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                שם מקבל הברכה *
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={form_data.recipientName}
+                                                onChange={(e) => handle_input_change('recipientName', e.target.value)}
+                                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                                placeholder="הכנס שם..."
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                גיל (אופציונלי)
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={form_data.recipientAge}
+                                                onChange={(e) => handle_input_change('recipientAge', e.target.value)}
+                                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                                placeholder="לדוגמא: 25, 30..."
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                הקשר אליך (אופציונלי)
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={form_data.relationship}
+                                                onChange={(e) => handle_input_change('relationship', e.target.value)}
+                                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                                placeholder="לדוגמא: חבר, אח, עמית לעבודה..."
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* עמודה שנייה */}
+                                    <div className="space-y-6">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                טון הברכה *
+                                            </label>
+                                            <div className="space-y-2">
+                                                {tones.map(tone => (
+                                                    <button
+                                                        key={tone.value}
+                                                        onClick={() => handle_input_change('tone', tone.value)}
+                                                        className={`w-full p-3 rounded-lg border-2 transition-all text-right ${
+                                                            form_data.tone === tone.value
+                                                                ? 'border-purple-500 bg-purple-50 text-purple-700'
+                                                                : 'border-gray-200 hover:border-purple-300'
+                                                        }`}
+                                                    >
+                                                        {tone.label}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                פרטים אישיים (אופציונלי)
+                                            </label>
+                                            <textarea
+                                                value={form_data.personalDetails}
+                                                onChange={(e) => handle_input_change('personalDetails', e.target.value)}
+                                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent h-24 resize-none"
+                                                placeholder="תחביבים, מקצוע, זיכרונות משותפים..."
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                הערות נוספות (אופציונלי)
+                                            </label>
+                                            <textarea
+                                                value={form_data.additionalNotes}
+                                                onChange={(e) => handle_input_change('additionalNotes', e.target.value)}
+                                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent h-20 resize-none"
+                                                placeholder="לדוגמא: הקפד על ברכה אנושית, השתמש בביטויים ישראליים..."
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="mt-8 text-center">
+                                    <button
+                                        onClick={generate_greeting}
+                                        disabled={is_generating}
+                                        className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-8 py-4 rounded-xl font-semibold text-lg shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 mx-auto"
+                                    >
+                                        {is_generating ? (
+                                            <>
+                                                <div className="loading-spinner rounded-full h-5 w-5 border-b-2 border-white"></div>
+                                                יוצר ברכה...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Gift size={20} />
+                                                צור כרטיס ברכה
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="space-y-6">
+                                {/* כרטיס הברכה */}
+                                <div className={`${get_card_background(generated_card.eventType)} p-8 rounded-2xl shadow-2xl`}>
+                                    <div className="bg-white/90 backdrop-blur-sm p-8 rounded-xl text-center">
+                                        <div className="text-6xl mb-4">{generated_card.eventIcon}</div>
+                                        <h2 className="text-2xl font-bold text-gray-800 mb-6">
+                                            {event_types.find(e => e.value === generated_card.eventType)?.label}
+                                        </h2>
+                                        <div className="text-lg leading-relaxed text-gray-700 whitespace-pre-wrap font-medium hebrew-text">
+                                            {generated_card.text}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* כפתורי פעולה */}
+                                <div className="flex justify-center gap-4 flex-wrap">
+                                    <button
+                                        onClick={() => {
+                                            alert('פונקציית ההורדה תתווסף בעדכון הבא');
+                                        }}
+                                        className="bg-green-600 text-white px-6 py-3 rounded-lg font-semibold flex items-center gap-2 hover:bg-green-700 transition-colors"
+                                    >
+                                        <Download size={20} />
+                                        הורד כרטיס
+                                    </button>
+                                    
+                                    <button
+                                        onClick={handle_share}
+                                        className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold flex items-center gap-2 hover:bg-blue-700 transition-colors"
+                                    >
+                                        <Share2 size={20} />
+                                        שתף
+                                    </button>
+                                    
+                                    <button
+                                        onClick={reset_form}
+                                        className="bg-gray-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-gray-700 transition-colors"
+                                    >
+                                        צור ברכה חדשה
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        const App = () => {
+            return (
+                <ErrorBoundary>
+                    <GreetingCardGenerator />
+                </ErrorBoundary>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>

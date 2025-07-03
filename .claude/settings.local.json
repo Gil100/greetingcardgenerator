@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find /mnt/c/Users/acerg/mypy/Projects/greetingcardgenerator -type f -name \".*\" -o -name \"*.json\" -o -name \"*.md\" -o -name \"*.txt\" -o -name \"*.js\" -o -name \"*.ts\" -o -name \"*.jsx\" -o -name \"*.html\" -o -name \"*.css\" -o -name \"*.yml\" -o -name \"*.yaml\" -o -name \"Dockerfile\" -o -name \"*.config.*\")",
+      "Bash(find:*)",
+      "Bash(rm:*)"
+    ],
+    "deny": []
+  }
+}
