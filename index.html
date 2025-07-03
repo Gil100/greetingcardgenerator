@@ -7,8 +7,8 @@
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://unpkg.com/lucide-react@latest/dist/umd/lucide-react.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎉</text></svg>">
     <script>
         // Suppress production warnings
         if (typeof process === 'undefined') {
@@ -47,10 +47,121 @@
 
     <script type="text/babel" data-presets="react">
         const { useState, useEffect, useMemo, useRef } = React;
-        const { Heart, Gift, Sparkles, Download, Share2, AlertCircle } = lucideReact;
+
+        // Simple SVG icon components to replace lucide-react
+        const Heart = ({ size = 24, className = "" }) => (
+            React.createElement("svg", {
+                width: size,
+                height: size,
+                viewBox: "0 0 24 24",
+                fill: "none",
+                stroke: "currentColor",
+                strokeWidth: "2",
+                strokeLinecap: "round",
+                strokeLinejoin: "round",
+                className: className
+            }, React.createElement("path", {
+                d: "M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+            }))
+        );
+
+        const Gift = ({ size = 24, className = "" }) => (
+            React.createElement("svg", {
+                width: size,
+                height: size,
+                viewBox: "0 0 24 24",
+                fill: "none",
+                stroke: "currentColor",
+                strokeWidth: "2",
+                strokeLinecap: "round",
+                strokeLinejoin: "round",
+                className: className
+            }, 
+            React.createElement("polyline", { points: "20,12 20,22 4,22 4,12" }),
+            React.createElement("rect", { x: "2", y: "7", width: "20", height: "5" }),
+            React.createElement("line", { x1: "12", y1: "22", x2: "12", y2: "7" }),
+            React.createElement("path", { d: "m12,7 0,-3C12,2 10,2 10,2S8,2 8,4s2,2 2,2 2,0 2,1Z" }),
+            React.createElement("path", { d: "m12,7 0,-3c0,-2 2,-2 2,-2s2,0 2,2-2,2-2,2-2,0-2,1Z" })
+            )
+        );
+
+        const Sparkles = ({ size = 24, className = "" }) => (
+            React.createElement("svg", {
+                width: size,
+                height: size,
+                viewBox: "0 0 24 24",
+                fill: "none",
+                stroke: "currentColor",
+                strokeWidth: "2",
+                strokeLinecap: "round",
+                strokeLinejoin: "round",
+                className: className
+            },
+            React.createElement("path", { d: "m12,3-1.5,6L4,12l6.5,3L12,21l1.5-6L20,12l-6.5-3Z" }),
+            React.createElement("path", { d: "M8,8h.01" }),
+            React.createElement("path", { d: "M16,8h.01" }),
+            React.createElement("path", { d: "M12,16h.01" })
+            )
+        );
+
+        const Download = ({ size = 24, className = "" }) => (
+            React.createElement("svg", {
+                width: size,
+                height: size,
+                viewBox: "0 0 24 24",
+                fill: "none",
+                stroke: "currentColor",
+                strokeWidth: "2",
+                strokeLinecap: "round",
+                strokeLinejoin: "round",
+                className: className
+            },
+            React.createElement("path", { d: "M21,15v4a2,2 0,0 1,-2,2H5a2,2 0,0 1,-2,-2V15" }),
+            React.createElement("polyline", { points: "7,10 12,15 17,10" }),
+            React.createElement("line", { x1: "12", y1: "15", x2: "12", y2: "3" })
+            )
+        );
+
+        const Share2 = ({ size = 24, className = "" }) => (
+            React.createElement("svg", {
+                width: size,
+                height: size,
+                viewBox: "0 0 24 24",
+                fill: "none",
+                stroke: "currentColor",
+                strokeWidth: "2",
+                strokeLinecap: "round",
+                strokeLinejoin: "round",
+                className: className
+            },
+            React.createElement("circle", { cx: "18", cy: "5", r: "3" }),
+            React.createElement("circle", { cx: "6", cy: "12", r: "3" }),
+            React.createElement("circle", { cx: "18", cy: "19", r: "3" }),
+            React.createElement("line", { x1: "8.59", y1: "13.51", x2: "15.42", y2: "17.49" }),
+            React.createElement("line", { x1: "15.41", y1: "6.51", x2: "8.59", y2: "10.49" })
+            )
+        );
+
+        const AlertCircle = ({ size = 24, className = "" }) => (
+            React.createElement("svg", {
+                width: size,
+                height: size,
+                viewBox: "0 0 24 24",
+                fill: "none",
+                stroke: "currentColor",
+                strokeWidth: "2",
+                strokeLinecap: "round",
+                strokeLinejoin: "round",
+                className: className
+            },
+            React.createElement("circle", { cx: "12", cy: "12", r: "10" }),
+            React.createElement("line", { x1: "12", y1: "8", x2: "12", y2: "12" }),
+            React.createElement("line", { x1: "12", y1: "16", x2: "12.01", y2: "16" })
+            )
+        );
 
         // Add error handling for missing dependencies
-        if (typeof React === 'undefined' || typeof ReactDOM === 'undefined' || typeof lucideReact === 'undefined') {
+        if (typeof React === 'undefined' || typeof ReactDOM === 'undefined') {
             document.getElementById('root').innerHTML = `
                 <div style="padding: 20px; color: red; text-align: center; font-family: Arial;">
                     <h2>שגיאה בטעינת התלויות</h2>
