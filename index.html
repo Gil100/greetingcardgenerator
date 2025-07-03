@@ -237,6 +237,10 @@
                     return 'מזל טוב על נישואיכם! שתזכו לבית נאמן בישראל, מלא באהבה, כבוד הדדי ואושר אמיתי. שתבנו יחד עתיד מזהיר ומלא ברכה.';
                 } else if (prompt.includes('בר מצווה') || prompt.includes('בת מצווה')) {
                     return 'מזל טוב על הבר מצווה! היום אתה נכנס לעולם הבוגרים. שתמיד תלך בדרך הטובה והנכונה ותגדל להיות אדם טוב וישר.';
+                } else if (prompt.includes('נכד חדש') || prompt.includes('נכדה חדשה')) {
+                    return 'מזל טוב על הנכד החדש! איזה שמחה גדולה ומיוחדת. שתזכו לראות אותו גדל ומתפתח, ושתהיו סבא וסבתא גאים ואוהבים. ברכות לכל המשפחה!';
+                } else if (prompt.includes('עליה לארץ')) {
+                    return 'ברוכים הבאים הביתה! עליה לארץ היא התגשמות חלום. שתקלטו בקלות, תמצאו את מקומכם ותהנו מכל הטוב שיש לארץ להציע. בהצלחה במסע החדש!';
                 } else {
                     return 'מזל טוב! שתמיד תהיה מוקף באהבה ובשמחה. שכל הטוב בעולם יגיע אליך ותמיד תמצא סיבות לחייך.';
                 }
@@ -251,6 +255,7 @@
         const GreetingCardGenerator = () => {
             const [form_data, set_form_data] = useState({
                 eventType: '',
+                customEventType: '',
                 recipientName: '',
                 recipientAge: '',
                 relationship: '',
@@ -271,7 +276,8 @@
                 { value: 'graduation', label: 'סיום לימודים', icon: '🎓' },
                 { value: 'newjob', label: 'עבודה חדשה', icon: '💼' },
                 { value: 'holiday', label: 'חג', icon: '✨' },
-                { value: 'anniversary', label: 'יום נישואין', icon: '❤️' }
+                { value: 'anniversary', label: 'יום נישואין', icon: '❤️' },
+                { value: 'custom', label: 'אירוע אחר', icon: '🎉' }
             ];
 
             const tones = [
@@ -316,6 +322,10 @@
                     set_error_message('אנא בחר סוג אירוע');
                     return false;
                 }
+                if (form_data.eventType === 'custom' && !form_data.customEventType.trim()) {
+                    set_error_message('אנא פרט את סוג האירוע');
+                    return false;
+                }
                 if (!form_data.recipientName.trim()) {
                     set_error_message('אנא הכנס שם מקבל הברכה');
                     return false;
@@ -339,8 +349,13 @@
                     const selected_event = event_types.find(e => e.value === form_data.eventType);
                     const selected_tone = tones.find(t => t.value === form_data.tone);
                     
+                    // Determine event name for prompt
+                    const event_name = form_data.eventType === 'custom' 
+                        ? form_data.customEventType 
+                        : selected_event.label;
+                    
                     const prompt = `
-                    צור ברכה מותאמת אישית עבור ${selected_event.label} בטון ${selected_tone.label}.
+                    צור ברכה מותאמת אישית עבור ${event_name} בטון ${selected_tone.label}.
                     
                     פרטי מקבל הברכה:
                     - שם: ${form_data.recipientName}
@@ -359,6 +374,7 @@
                     - התאם את האורך לסוג האירוע (2-4 משפטים)
                     - הקפד על טון ${selected_tone.label}
                     - שלב את הפרטים האישיים בצורה חלקה
+                    ${form_data.eventType === 'custom' ? `- התאם את הברכה ספציפית לאירוע "${form_data.customEventType}"` : ''}
                     
                     החזר רק את טקסט הברכה, ללא הסברים או הערות נוספות.
                     `;
@@ -368,8 +384,10 @@
                     const card_data = {
                         text: response,
                         eventType: form_data.eventType,
+                        customEventType: form_data.customEventType,
                         recipientName: form_data.recipientName,
                         eventIcon: selected_event.icon,
+                        eventName: event_name,
                         createdAt: new Date().toISOString()
                     };
 
@@ -413,6 +431,7 @@
             const reset_form = () => {
                 set_form_data({
                     eventType: '',
+                    customEventType: '',
                     recipientName: '',
                     recipientAge: '',
                     relationship: '',
@@ -482,7 +501,12 @@
                                                 {event_types.map(event => (
                                                     <button
                                                         key={event.value}
-                                                        onClick={() => handle_input_change('eventType', event.value)}
+                                                        onClick={() => {
+                                                            handle_input_change('eventType', event.value);
+                                                            if (event.value !== 'custom') {
+                                                                handle_input_change('customEventType', '');
+                                                            }
+                                                        }}
                                                         className={`p-3 rounded-lg border-2 transition-all flex items-center gap-2 text-sm ${
                                                             form_data.eventType === event.value
                                                                 ? 'border-purple-500 bg-purple-50 text-purple-700'
@@ -494,6 +518,21 @@
                                                     </button>
                                                 ))}
                                             </div>
+                                            
+                                            {form_data.eventType === 'custom' && (
+                                                <div className="mt-4">
+                                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                        פרט את סוג האירוע *
+                                                    </label>
+                                                    <input
+                                                        type="text"
+                                                        value={form_data.customEventType}
+                                                        onChange={(e) => handle_input_change('customEventType', e.target.value)}
+                                                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                                        placeholder="לדוגמא: נכד חדש, עליה לארץ, יום הולדת 50..."
+                                                    />
+                                                </div>
+                                            )}
                                         </div>
 
                                         <div>
@@ -612,7 +651,9 @@
                                     <div className="bg-white/90 backdrop-blur-sm p-8 rounded-xl text-center">
                                         <div className="text-6xl mb-4">{generated_card.eventIcon}</div>
                                         <h2 className="text-2xl font-bold text-gray-800 mb-6">
-                                            {event_types.find(e => e.value === generated_card.eventType)?.label}
+                                            {generated_card.eventType === 'custom' 
+                                                ? generated_card.customEventType 
+                                                : event_types.find(e => e.value === generated_card.eventType)?.label}
                                         </h2>
                                         <div className="text-lg leading-relaxed text-gray-700 whitespace-pre-wrap font-medium hebrew-text">
                                             {generated_card.text}

@@ -145,3 +145,26 @@ greetingcardgenerator/
 - Added dependency availability checks before app initialization
 - Improved error boundary with better Hebrew error messages
 - Enhanced loading resilience for CDN failures
+
+### Version 1.2.0 - Custom Event Types Support
+**Date**: 2025-07-03
+
+**New Features**:
+- Added "אירוע אחר" (Other Event) option to event type selection
+- Custom event type input field with Hebrew placeholder examples
+- Dynamic event validation for custom events
+- AI prompt enhancement to handle custom event types specifically
+- Custom event display in generated greeting cards
+
+**Implementation Details**:
+- Added `customEventType` to form data state management
+- Enhanced form validation to require custom event description when selected
+- Modified AI prompt to include custom event-specific instructions
+- Updated card display logic to show custom event names
+- Added mock AI responses for common custom events (new grandchild, aliyah)
+- Extended localStorage persistence to include custom event data
+
+**Examples Supported**:
+- נכד חדש (New grandchild) - with appropriate blessing
+- עליה לארץ (Immigration to Israel) - with welcome message
+- Any user-defined event with contextual AI-generated greetings
