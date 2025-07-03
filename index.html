@@ -4,11 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>מחולל כרטיסי ברכה</title>
-    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://unpkg.com/lucide-react@latest/dist/umd/lucide-react.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // Suppress production warnings
+        if (typeof process === 'undefined') {
+            window.process = { env: { NODE_ENV: 'production' } };
+        }
+    </script>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -39,9 +45,21 @@
 <body>
     <div id="root"></div>
 
-    <script type="text/babel">
+    <script type="text/babel" data-presets="react">
         const { useState, useEffect, useMemo, useRef } = React;
         const { Heart, Gift, Sparkles, Download, Share2, AlertCircle } = lucideReact;
+
+        // Add error handling for missing dependencies
+        if (typeof React === 'undefined' || typeof ReactDOM === 'undefined' || typeof lucideReact === 'undefined') {
+            document.getElementById('root').innerHTML = `
+                <div style="padding: 20px; color: red; text-align: center; font-family: Arial;">
+                    <h2>שגיאה בטעינת התלויות</h2>
+                    <p>אנא רענן את הדף ונסה שוב</p>
+                    <button onclick="window.location.reload()">רענן דף</button>
+                </div>
+            `;
+            throw new Error('Missing dependencies');
+        }
 
         // Error Boundary Component
         class ErrorBoundary extends React.Component {
