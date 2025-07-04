@@ -234,6 +234,7 @@
                 const extract_info_from_prompt = (prompt) => {
                     const name_match = prompt.match(/שם:\s*([^\n\r]+)/);
                     const age_match = prompt.match(/גיל:\s*([^\n\r]+)/);
+                    const gender_match = prompt.match(/מין:\s*([^\n\r]+)/);
                     const relationship_match = prompt.match(/הקשר:\s*([^\n\r]+)/);
                     const tone_match = prompt.match(/בטון\s*([^\.\n\r]+)/);
                     const personal_match = prompt.match(/פרטים אישיים:\s*([^\n\r]+)/);
@@ -242,6 +243,7 @@
                     return {
                         name: name_match ? name_match[1].trim() : '',
                         age: age_match ? age_match[1].trim() : '',
+                        gender: gender_match ? gender_match[1].trim() : '',
                         relationship: relationship_match ? relationship_match[1].trim() : '',
                         tone: tone_match ? tone_match[1].trim() : '',
                         personalDetails: personal_match ? personal_match[1].trim() : '',
@@ -251,26 +253,55 @@
 
                 const info = extract_info_from_prompt(prompt);
                 
+                // Helper function to get gender-appropriate text
+                const get_gender_forms = (gender) => {
+                    const is_male = gender === 'זכר';
+                    return {
+                        dear: is_male ? 'יקר' : 'יקרה',
+                        you: is_male ? 'אתה' : 'את',
+                        beautiful: is_male ? 'נהדר' : 'נהדרת',
+                        skilled: is_male ? 'מוכשר' : 'מוכשרת',
+                        beloved: is_male ? 'אהוב' : 'אהובה',
+                        brings: is_male ? 'מביא' : 'מביאה',
+                        continue: is_male ? 'תמשיך' : 'תמשיכי',
+                        special: is_male ? 'המיוחד' : 'המיוחדת',
+                        surrounded: is_male ? 'מוקף' : 'מוקפת',
+                        getMarried: is_male ? 'תתחתן' : 'תתחתני',
+                        grandpa: is_male ? 'סבא' : 'סבתא',
+                        helper: is_male ? 'עוזר' : 'עוזרת',
+                        receive: is_male ? 'תקבל' : 'תקבלי',
+                        shaper: is_male ? 'מעצב' : 'מעצבת',
+                        doer: is_male ? 'עושה' : 'עושה',
+                        friend: is_male ? 'חבר' : 'חברה',
+                        sibling: is_male ? 'אח' : 'אחות',
+                        colleague: is_male ? 'עמית' : 'עמיתה',
+                        doctor: is_male ? 'רופא' : 'רופאה',
+                        teacher: is_male ? 'מורה' : 'מורה'
+                    };
+                };
+
                 // Generate personalized response based on event type and extracted info
                 const generate_personalized_greeting = (event_type, info) => {
                     let greeting = '';
-                    const name = info.name || 'יקר/ה';
+                    const name = info.name || (info.gender === 'זכר' ? 'יקר' : 'יקרה');
                     const tone = info.tone || '';
+                    const gender_forms = get_gender_forms(info.gender);
+                    const is_male = info.gender === 'זכר';
                     
                     // Base greeting by event type
                     if (event_type.includes('יום הולדת')) {
                         if (tone.includes('מצחיק')) {
-                            greeting = `${name} היקר/ה, עוד שנה עברה ואתה עדיין נראה/ת נהדר/ת! מזל טוב על יום ההולדת. שהשנה הבאה תביא לך הרבה צחוק, אושר ואולי קצת פחות נרות על העוגה!`;
+                            greeting = `${name} ה${gender_forms.dear}, עוד שנה עברה ו${gender_forms.you} עדיין ${gender_forms.beautiful}! מזל טוב על יום ההולדת. שהשנה הבאה תביא לך הרבה צחוק, אושר ואולי קצת פחות נרות על העוגה!`;
                         } else if (tone.includes('רשמי')) {
                             greeting = `לכבוד ${name}, בהגיע יום הולדתך הנני להביע לך את ברכותיי הכנות. שתזכה לשנים רבות ונעימות מלאות בריאות ואושר.`;
                         } else if (tone.includes('רגשי')) {
-                            greeting = `${name} אהוב/ה, יום הולדתך הוא יום מיוחד עבור כל מי שאוהב אותך. אתה/את מביא/ה כל כך הרבה אור לחיים של האנשים סביבך. מזל טוב ושתמשיך/י להיות הדמות המיוחדת שאתה/את!`;
+                            greeting = `${name} ה${gender_forms.beloved}, יום הולדתך הוא יום מיוחד עבור כל מי שאוהב אותך. ${gender_forms.you} ${gender_forms.brings} כל כך הרבה אור לחיים של האנשים סביבך. מזל טוב וש${gender_forms.continue} להיות הדמות ${gender_forms.special} ש${gender_forms.you}!`;
                         } else {
-                            greeting = `מזל טוב ${name} על יום הולדתך! שתזכה לשנה מלאה בבריאות, אושר והצלחה. שכל חלומותיך יתגשמו ושתמשיך לשמח את כל הסובבים אותך.`;
+                            greeting = `מזל טוב ${name} על יום הולדתך! שתזכה לשנה מלאה בבריאות, אושר והצלחה. שכל חלומותיך יתגשמו וש${gender_forms.continue} לשמח את כל הסובבים אותך.`;
                         }
                     } else if (event_type.includes('חתונה')) {
                         if (tone.includes('מצחיק')) {
-                            greeting = `${name}, הגיע הזמן! אחרי כל השנים של "מתי תתחתן/י?" סוף סוף! מזל טוב על החתונה. שתמיד תזכרו שהמילים הכי חשובות בנישואין הן "אתה צודק/ת יקירי/תי"!`;
+                            greeting = `${name}, הגיע הזמן! אחרי כל השנים של "מתי ${gender_forms.getMarried}?" סוף סוף! מזל טוב על החתונה. שתמיד תזכרו שהמילים הכי חשובות בנישואין הן "${gender_forms.you} ${is_male ? 'צודק' : 'צודקת'} יקירי!"`;
                         } else if (tone.includes('רשמי')) {
                             greeting = `לכבוד ${name}, בהזדמנות נישואיכם הבאתי להביע את ברכותיי הכנות. שתזכו לחיים משותפים מלאי אהבה, הבנה ואושר.`;
                         } else {
@@ -278,35 +309,35 @@
                         }
                     } else if (event_type.includes('נכד חדש') || event_type.includes('נכדה חדשה')) {
                         if (tone.includes('מצחיק')) {
-                            greeting = `${name}, מזל טוב על הנכד החדש! עכשיו אתה/את רשמית סבא/סבתא - זה אומר שאפשר לפנק בלי מוסר ולהחזיר הביתה! איזה כיף גדול מחכה לך.`;
+                            greeting = `${name}, מזל טוב על הנכד החדש! עכשיו ${gender_forms.you} רשמית ${gender_forms.grandpa} - זה אומר שאפשר לפנק בלי מוסר ולהחזיר הביתה! איזה כיף גדול מחכה לך.`;
                         } else if (tone.includes('רגשי')) {
-                            greeting = `${name} היקר/ה, איזה רגש מתוק ומיוחד! נכד חדש זה לא רק תינוק, זה המשך הדרך, חוליה נוספת בשרשרת האהבה שלכם. שתזכו להיות סבא וסבתא גאים ולראות אותו גדל ופורח.`;
+                            greeting = `${name} ה${gender_forms.dear}, איזה רגש מתוק ומיוחד! נכד חדש זה לא רק תינוק, זה המשך הדרך, חוליה נוספת בשרשרת האהבה שלכם. שתזכו להיות ${gender_forms.grandpa} ${is_male ? 'גאה' : 'גאה'} ולראות אותו גדל ופורח.`;
                         } else {
-                            greeting = `מזל טוב ${name} על הנכד החדש! איזה שמחה גדולה ומיוחדת. שתזכו לראות אותו גדל ומתפתח, ושתהיו סבא וסבתא גאים ואוהבים. ברכות לכל המשפחה!`;
+                            greeting = `מזל טוב ${name} על הנכד החדש! איזה שמחה גדולה ומיוחדת. שתזכו לראות אותו גדל ומתפתח, ושתהיו ${gender_forms.grandpa} ${is_male ? 'גאה' : 'גאה'} ואוהבים. ברכות לכל המשפחה!`;
                         }
                     } else if (event_type.includes('עליה לארץ')) {
                         greeting = `${name}, ברוכים הבאים הביתה! עליה לארץ היא התגשמות חלום. שתקלטו בקלות, תמצאו את מקומכם ותהנו מכל הטוב שיש לארץ להציע. בהצלחה במסע החדש!`;
                     } else {
-                        greeting = `מזל טוב ${name}! שתמיד תהיה מוקף/ת באהבה ובשמחה. שכל הטוב בעולם יגיע אליך ותמיד תמצא סיבות לחייך.`;
+                        greeting = `מזל טוב ${name}! שתמיד תהיה ${gender_forms.surrounded} באהבה ובשמחה. שכל הטוב בעולם יגיע אליך ותמיד תמצא סיבות לחייך.`;
                     }
                     
                     // Add personal details if provided
                     if (info.personalDetails) {
                         if (info.personalDetails.includes('רופא') || info.personalDetails.includes('רופאה')) {
-                            greeting += ` כרופא/ה מוכשר/ת, אתה/את עוזר/ת לכל כך הרבה אנשים - הגיע הזמן שגם אתה/את תקבל/י חזרה את כל הטוב הזה.`;
+                            greeting += ` כ${gender_forms.doctor} ${gender_forms.skilled}, ${gender_forms.you} ${gender_forms.helper} לכל כך הרבה אנשים - הגיע הזמן שגם ${gender_forms.you} ${gender_forms.receive} חזרה את כל הטוב הזה.`;
                         } else if (info.personalDetails.includes('מורה')) {
-                            greeting += ` המקצוע שלך כמורה/ה הוא מקצוע קדוש - אתה/את מעצב/ת את העתיד. תודה על כל מה שאתה/את עושה/ת.`;
+                            greeting += ` המקצוע שלך כ${gender_forms.teacher} הוא מקצוע קדוש - ${gender_forms.you} ${gender_forms.shaper} את העתיד. תודה על כל מה ש${gender_forms.you} ${gender_forms.doer}.`;
                         } else if (info.personalDetails.includes('מוסיקה') || info.personalDetails.includes('נגינה')) {
-                            greeting += ` כמו שאתה/את מביא/ה מוסיקה יפה לעולם, ככה החיים שלך מלאים במלודיות מתוקות.`;
+                            greeting += ` כמו ש${gender_forms.you} ${gender_forms.brings} מוסיקה יפה לעולם, ככה החיים שלך מלאים במלודיות מתוקות.`;
                         }
                     }
                     
                     // Add relationship context
                     if (info.relationship) {
                         if (info.relationship.includes('אח') || info.relationship.includes('אחות')) {
-                            greeting += ` כל הכבוד שיש לי אח/ות כמוך!`;
+                            greeting += ` כל הכבוד שיש לי ${gender_forms.sibling} כמוך!`;
                         } else if (info.relationship.includes('חבר')) {
-                            greeting += ` איזה מזל שיש לי חבר/ה כמוך בחיים!`;
+                            greeting += ` איזה מזל שיש לי ${gender_forms.friend} כמוך בחיים!`;
                         } else if (info.relationship.includes('עמית')) {
                             greeting += ` העבודה איתך היא תמיד הנאה!`;
                         }
@@ -339,9 +370,10 @@
                 customEventType: '',
                 recipientName: '',
                 recipientAge: '',
+                recipientGender: '',
                 relationship: '',
                 personalDetails: '',
-                tone: '',
+                tone: [],
                 additionalNotes: ''
             });
             
@@ -367,6 +399,11 @@
                 { value: 'formal', label: 'רשמי' },
                 { value: 'emotional', label: 'רגשי' },
                 { value: 'casual', label: 'קליל' }
+            ];
+
+            const genders = [
+                { value: 'male', label: 'זכר' },
+                { value: 'female', label: 'נקבה' }
             ];
 
             // Load data from localStorage on component mount
@@ -411,8 +448,12 @@
                     set_error_message('אנא הכנס שם מקבל הברכה');
                     return false;
                 }
-                if (!form_data.tone) {
-                    set_error_message('אנא בחר טון לברכה');
+                if (!form_data.tone.length) {
+                    set_error_message('אנא בחר לפחות טון אחד לברכה');
+                    return false;
+                }
+                if (!form_data.recipientGender) {
+                    set_error_message('אנא בחר מין מקבל הברכה');
                     return false;
                 }
                 return true;
@@ -428,7 +469,8 @@
                 
                 try {
                     const selected_event = event_types.find(e => e.value === form_data.eventType);
-                    const selected_tone = tones.find(t => t.value === form_data.tone);
+                    const selected_tones = form_data.tone.map(t => tones.find(tone => tone.value === t).label);
+                    const selected_gender = genders.find(g => g.value === form_data.recipientGender);
                     
                     // Determine event name for prompt
                     const event_name = form_data.eventType === 'custom' 
@@ -436,10 +478,11 @@
                         : selected_event.label;
                     
                     const prompt = `
-                    צור ברכה מותאמת אישית עבור ${event_name} בטון ${selected_tone.label}.
+                    צור ברכה מותאמת אישית עבור ${event_name} בטון ${selected_tones.join(' ו')}.
                     
                     פרטי מקבל הברכה:
                     - שם: ${form_data.recipientName}
+                    - מין: ${selected_gender.label}
                     ${form_data.recipientAge ? `- גיל: ${form_data.recipientAge}` : ''}
                     ${form_data.relationship ? `- הקשר: ${form_data.relationship}` : ''}
                     
@@ -453,8 +496,9 @@
                     - השתמש בביטויים ישראליים טבעיים
                     - הימנע מביטויים קלישאתיים או גנריים
                     - התאם את האורך לסוג האירוע (2-4 משפטים)
-                    - הקפד על טון ${selected_tone.label}
+                    - הקפד על טון ${selected_tones.join(' ו')}
                     - שלב את הפרטים האישיים בצורה חלקה
+                    - השתמש בצורת הפנייה המתאימה למין המקבל (זכר/נקבה) - לדוגמה: "אתה/את", "יקר/יקרה", "מוכשר/מוכשרת"
                     ${form_data.eventType === 'custom' ? `- התאם את הברכה ספציפית לאירוע "${form_data.customEventType}"` : ''}
                     
                     החזר רק את טקסט הברכה, ללא הסברים או הערות נוספות.
@@ -515,9 +559,10 @@
                     customEventType: '',
                     recipientName: '',
                     recipientAge: '',
+                    recipientGender: '',
                     relationship: '',
                     personalDetails: '',
-                    tone: '',
+                    tone: [],
                     additionalNotes: ''
                 });
                 set_generated_card(null);
@@ -791,21 +836,50 @@
                                                 placeholder="לדוגמא: חבר, אח, עמית לעבודה..."
                                             />
                                         </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                מין מקבל הברכה *
+                                            </label>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                {genders.map(gender => (
+                                                    <button
+                                                        key={gender.value}
+                                                        onClick={() => handle_input_change('recipientGender', gender.value)}
+                                                        className={`p-3 rounded-lg border-2 transition-all ${
+                                                            form_data.recipientGender === gender.value
+                                                                ? 'border-purple-500 bg-purple-50 text-purple-700'
+                                                                : 'border-gray-200 hover:border-purple-300'
+                                                        }`}
+                                                    >
+                                                        {gender.label}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
                                     </div>
 
                                     {/* עמודה שנייה */}
                                     <div className="space-y-6">
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                טון הברכה *
+                                                טון הברכה * (ניתן לבחור יותר מאחד)
                                             </label>
                                             <div className="space-y-2">
                                                 {tones.map(tone => (
                                                     <button
                                                         key={tone.value}
-                                                        onClick={() => handle_input_change('tone', tone.value)}
+                                                        onClick={() => {
+                                                            const current_tones = form_data.tone;
+                                                            const is_selected = current_tones.includes(tone.value);
+                                                            if (is_selected) {
+                                                                handle_input_change('tone', current_tones.filter(t => t !== tone.value));
+                                                            } else {
+                                                                handle_input_change('tone', [...current_tones, tone.value]);
+                                                            }
+                                                        }}
                                                         className={`w-full p-3 rounded-lg border-2 transition-all text-right ${
-                                                            form_data.tone === tone.value
+                                                            form_data.tone.includes(tone.value)
                                                                 ? 'border-purple-500 bg-purple-50 text-purple-700'
                                                                 : 'border-gray-200 hover:border-purple-300'
                                                         }`}
@@ -814,6 +888,11 @@
                                                     </button>
                                                 ))}
                                             </div>
+                                            {form_data.tone.length > 0 && (
+                                                <div className="mt-2 text-sm text-gray-600">
+                                                    נבחרו: {form_data.tone.map(t => tones.find(tone => tone.value === t)?.label).join(', ')}
+                                                </div>
+                                            )}
                                         </div>
 
                                         <div>

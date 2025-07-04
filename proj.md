@@ -236,3 +236,49 @@ greetingcardgenerator/
 - Filename includes recipient name and current date
 - Visual feedback on download success/failure
 - Maintains card design consistency between web and downloaded versions
+
+### Version 1.5.0 - Gender-Appropriate Language & Multiple Tone Selection
+**Date**: 2025-07-04
+
+**Major Language Enhancement**:
+- **Gender Selection Field**: Added mandatory gender selection (זכר/נקבה) to ensure proper Hebrew language forms
+- **Gender-Appropriate Hebrew**: All greetings now use correct masculine/feminine forms (אתה/את, יקר/יקרה, נהדר/נהדרת, etc.)
+- **Multiple Tone Selection**: Users can now select multiple tones for richer, more complex greetings
+- **Combined Tone Processing**: AI generates content that blends selected tones naturally
+
+**New Features**:
+- **Gender Selection**: Mandatory field with זכר (male) and נקבה (female) options
+- **Multi-Tone Interface**: Enhanced tone selection with visual feedback showing selected combinations
+- **Smart Gender Forms**: 20+ gender-specific Hebrew word forms implemented in mock AI
+- **Improved Validation**: Added gender requirement to form validation
+
+**Language Improvements**:
+- **Masculine Forms**: אתה, יקר, נהדר, מוכשר, אהוב, מביא, תמשיך, המיוחד, מוקף, תתחתן, סבא, עוזר, תקבל, מעצב, חבר, אח, רופא
+- **Feminine Forms**: את, יקרה, נהדרת, מוכשרת, אהובה, מביאה, תמשיכי, המיוחדת, מוקפת, תתחתני, סבתא, עוזרת, תקבלי, מעצבת, חברה, אחות, רופאה
+
+**Multiple Tone Examples**:
+- **Warm + Funny**: Combines personal warmth with humor naturally
+- **Emotional + Formal**: Blends deep feeling with respectful language
+- **Casual + Warm**: Relaxed yet caring tone combinations
+
+**Technical Implementation**:
+- **Form State Management**: Updated to handle gender and tone arrays
+- **AI Prompt Enhancement**: Includes gender information and multiple tone processing
+- **Mock AI Rewrite**: Complete overhaul with gender-aware text generation
+- **Helper Functions**: Added `get_gender_forms()` function for systematic gender handling
+- **Validation Updates**: Enhanced form validation for new required fields
+
+**User Experience Improvements**:
+- **Visual Feedback**: Selected tones display with "נבחרו: טון1, טון2" indicator
+- **Intuitive Selection**: Toggle-based tone selection for easy multi-selection
+- **Gender Clarity**: Clear masculine/feminine buttons with proper Hebrew labels
+- **Error Messages**: Updated validation messages in Hebrew for new requirements
+
+**Example Improvements**:
+- **Before**: "מומו עכשיו אתה/את יכול/ה להיות גאה/ה"
+- **After**: "מומו עכשיו אתה יכול להיות גאה" (for male) or "מומו עכשיו את יכולה להיות גאה" (for female)
+
+**Backward Compatibility**:
+- **Form Reset**: All existing form fields preserved and enhanced
+- **localStorage**: Updated to handle new data structure
+- **Error Handling**: Graceful handling of missing gender information
