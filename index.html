@@ -224,26 +224,107 @@
             }
         }
 
-        // Mock Claude API for development
+        // Mock Claude API for development with personalization
         const mock_claude_api = {
             complete: async (prompt) => {
                 // Simulate API delay
                 await new Promise(resolve => setTimeout(resolve, 2000));
                 
-                // Mock response based on prompt content
-                if (prompt.includes('יום הולדת')) {
-                    return 'מזל טוב ליום הולדתך! שתזכה לשנה מלאה בבריאות, אושר והצלחה. שכל חלומותיך יתגשמו ושתמשיך לשמח את כל הסובבים אותך.';
-                } else if (prompt.includes('חתונה')) {
-                    return 'מזל טוב על נישואיכם! שתזכו לבית נאמן בישראל, מלא באהבה, כבוד הדדי ואושר אמיתי. שתבנו יחד עתיד מזהיר ומלא ברכה.';
-                } else if (prompt.includes('בר מצווה') || prompt.includes('בת מצווה')) {
-                    return 'מזל טוב על הבר מצווה! היום אתה נכנס לעולם הבוגרים. שתמיד תלך בדרך הטובה והנכונה ותגדל להיות אדם טוב וישר.';
-                } else if (prompt.includes('נכד חדש') || prompt.includes('נכדה חדשה')) {
-                    return 'מזל טוב על הנכד החדש! איזה שמחה גדולה ומיוחדת. שתזכו לראות אותו גדל ומתפתח, ושתהיו סבא וסבתא גאים ואוהבים. ברכות לכל המשפחה!';
-                } else if (prompt.includes('עליה לארץ')) {
-                    return 'ברוכים הבאים הביתה! עליה לארץ היא התגשמות חלום. שתקלטו בקלות, תמצאו את מקומכם ותהנו מכל הטוב שיש לארץ להציע. בהצלחה במסע החדש!';
-                } else {
-                    return 'מזל טוב! שתמיד תהיה מוקף באהבה ובשמחה. שכל הטוב בעולם יגיע אליך ותמיד תמצא סיבות לחייך.';
-                }
+                // Extract information from prompt for personalization
+                const extract_info_from_prompt = (prompt) => {
+                    const name_match = prompt.match(/שם:\s*([^\n\r]+)/);
+                    const age_match = prompt.match(/גיל:\s*([^\n\r]+)/);
+                    const relationship_match = prompt.match(/הקשר:\s*([^\n\r]+)/);
+                    const tone_match = prompt.match(/בטון\s*([^\.\n\r]+)/);
+                    const personal_match = prompt.match(/פרטים אישיים:\s*([^\n\r]+)/);
+                    const notes_match = prompt.match(/הערות נוספות:\s*([^\n\r]+)/);
+                    
+                    return {
+                        name: name_match ? name_match[1].trim() : '',
+                        age: age_match ? age_match[1].trim() : '',
+                        relationship: relationship_match ? relationship_match[1].trim() : '',
+                        tone: tone_match ? tone_match[1].trim() : '',
+                        personalDetails: personal_match ? personal_match[1].trim() : '',
+                        additionalNotes: notes_match ? notes_match[1].trim() : ''
+                    };
+                };
+
+                const info = extract_info_from_prompt(prompt);
+                
+                // Generate personalized response based on event type and extracted info
+                const generate_personalized_greeting = (event_type, info) => {
+                    let greeting = '';
+                    const name = info.name || 'יקר/ה';
+                    const tone = info.tone || '';
+                    
+                    // Base greeting by event type
+                    if (event_type.includes('יום הולדת')) {
+                        if (tone.includes('מצחיק')) {
+                            greeting = `${name} היקר/ה, עוד שנה עברה ואתה עדיין נראה/ת נהדר/ת! מזל טוב על יום ההולדת. שהשנה הבאה תביא לך הרבה צחוק, אושר ואולי קצת פחות נרות על העוגה!`;
+                        } else if (tone.includes('רשמי')) {
+                            greeting = `לכבוד ${name}, בהגיע יום הולדתך הנני להביע לך את ברכותיי הכנות. שתזכה לשנים רבות ונעימות מלאות בריאות ואושר.`;
+                        } else if (tone.includes('רגשי')) {
+                            greeting = `${name} אהוב/ה, יום הולדתך הוא יום מיוחד עבור כל מי שאוהב אותך. אתה/את מביא/ה כל כך הרבה אור לחיים של האנשים סביבך. מזל טוב ושתמשיך/י להיות הדמות המיוחדת שאתה/את!`;
+                        } else {
+                            greeting = `מזל טוב ${name} על יום הולדתך! שתזכה לשנה מלאה בבריאות, אושר והצלחה. שכל חלומותיך יתגשמו ושתמשיך לשמח את כל הסובבים אותך.`;
+                        }
+                    } else if (event_type.includes('חתונה')) {
+                        if (tone.includes('מצחיק')) {
+                            greeting = `${name}, הגיע הזמן! אחרי כל השנים של "מתי תתחתן/י?" סוף סוף! מזל טוב על החתונה. שתמיד תזכרו שהמילים הכי חשובות בנישואין הן "אתה צודק/ת יקירי/תי"!`;
+                        } else if (tone.includes('רשמי')) {
+                            greeting = `לכבוד ${name}, בהזדמנות נישואיכם הבאתי להביע את ברכותיי הכנות. שתזכו לחיים משותפים מלאי אהבה, הבנה ואושר.`;
+                        } else {
+                            greeting = `מזל טוב ${name} על נישואיך! שתזכו לבית נאמן בישראל, מלא באהבה, כבוד הדדי ואושר אמיתי. שתבנו יחד עתיד מזהיר ומלא ברכה.`;
+                        }
+                    } else if (event_type.includes('נכד חדש') || event_type.includes('נכדה חדשה')) {
+                        if (tone.includes('מצחיק')) {
+                            greeting = `${name}, מזל טוב על הנכד החדש! עכשיו אתה/את רשמית סבא/סבתא - זה אומר שאפשר לפנק בלי מוסר ולהחזיר הביתה! איזה כיף גדול מחכה לך.`;
+                        } else if (tone.includes('רגשי')) {
+                            greeting = `${name} היקר/ה, איזה רגש מתוק ומיוחד! נכד חדש זה לא רק תינוק, זה המשך הדרך, חוליה נוספת בשרשרת האהבה שלכם. שתזכו להיות סבא וסבתא גאים ולראות אותו גדל ופורח.`;
+                        } else {
+                            greeting = `מזל טוב ${name} על הנכד החדש! איזה שמחה גדולה ומיוחדת. שתזכו לראות אותו גדל ומתפתח, ושתהיו סבא וסבתא גאים ואוהבים. ברכות לכל המשפחה!`;
+                        }
+                    } else if (event_type.includes('עליה לארץ')) {
+                        greeting = `${name}, ברוכים הבאים הביתה! עליה לארץ היא התגשמות חלום. שתקלטו בקלות, תמצאו את מקומכם ותהנו מכל הטוב שיש לארץ להציע. בהצלחה במסע החדש!`;
+                    } else {
+                        greeting = `מזל טוב ${name}! שתמיד תהיה מוקף/ת באהבה ובשמחה. שכל הטוב בעולם יגיע אליך ותמיד תמצא סיבות לחייך.`;
+                    }
+                    
+                    // Add personal details if provided
+                    if (info.personalDetails) {
+                        if (info.personalDetails.includes('רופא') || info.personalDetails.includes('רופאה')) {
+                            greeting += ` כרופא/ה מוכשר/ת, אתה/את עוזר/ת לכל כך הרבה אנשים - הגיע הזמן שגם אתה/את תקבל/י חזרה את כל הטוב הזה.`;
+                        } else if (info.personalDetails.includes('מורה')) {
+                            greeting += ` המקצוע שלך כמורה/ה הוא מקצוע קדוש - אתה/את מעצב/ת את העתיד. תודה על כל מה שאתה/את עושה/ת.`;
+                        } else if (info.personalDetails.includes('מוסיקה') || info.personalDetails.includes('נגינה')) {
+                            greeting += ` כמו שאתה/את מביא/ה מוסיקה יפה לעולם, ככה החיים שלך מלאים במלודיות מתוקות.`;
+                        }
+                    }
+                    
+                    // Add relationship context
+                    if (info.relationship) {
+                        if (info.relationship.includes('אח') || info.relationship.includes('אחות')) {
+                            greeting += ` כל הכבוד שיש לי אח/ות כמוך!`;
+                        } else if (info.relationship.includes('חבר')) {
+                            greeting += ` איזה מזל שיש לי חבר/ה כמוך בחיים!`;
+                        } else if (info.relationship.includes('עמית')) {
+                            greeting += ` העבודה איתך היא תמיד הנאה!`;
+                        }
+                    }
+                    
+                    return greeting;
+                };
+                
+                // Determine event type from prompt
+                let event_type = '';
+                if (prompt.includes('יום הולדת')) event_type = 'יום הולדת';
+                else if (prompt.includes('חתונה')) event_type = 'חתונה';
+                else if (prompt.includes('נכד חדש') || prompt.includes('נכדה חדשה')) event_type = 'נכד חדש';
+                else if (prompt.includes('עליה לארץ')) event_type = 'עליה לארץ';
+                else if (prompt.includes('בר מצווה') || prompt.includes('בת מצווה')) event_type = 'בר מצווה';
+                else event_type = 'כללי';
+                
+                return generate_personalized_greeting(event_type, info);
             }
         };
 

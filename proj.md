@@ -168,3 +168,36 @@ greetingcardgenerator/
 - נכד חדש (New grandchild) - with appropriate blessing
 - עליה לארץ (Immigration to Israel) - with welcome message
 - Any user-defined event with contextual AI-generated greetings
+
+### Version 1.3.0 - Personalized AI Responses
+**Date**: 2025-07-03
+
+**Major AI Enhancement**:
+- Completely rewrote mock AI to extract and use all form data for personalization
+- AI now addresses recipient by name in every greeting
+- Tone-specific variations implemented for all event types
+- Personal details integration (profession, hobbies, etc.)
+- Relationship context added to greetings
+- Dynamic content generation based on extracted information
+
+**Personalization Features**:
+- **Name Integration**: All greetings now start with recipient's name
+- **Tone Variations**: 
+  - מצחיק (Funny) - includes humor and light-hearted jokes
+  - רשמי (Formal) - uses formal Hebrew language structure
+  - רגשי (Emotional) - deep, heartfelt expressions
+  - חם ואישי (Warm & Personal) - friendly, caring tone
+  - קליל (Casual) - relaxed, everyday language
+- **Professional Context**: Special additions for doctors, teachers, musicians
+- **Relationship Context**: Custom additions for siblings, friends, colleagues
+- **Personal Details**: AI incorporates hobbies and interests into greetings
+
+**Example Improvement**:
+- **Before**: "מזל טוב על הנכד החדש! איזה שמחה גדולה..."
+- **After**: "מומו, מזל טוב על הנכד החדש! עכשיו אתה רשמית סבא..." (with tone-specific content)
+
+**Technical Implementation**:
+- Regex-based prompt parsing to extract all user inputs
+- Conditional greeting generation based on extracted data
+- Fallback handling for missing information
+- Multi-layered personalization (name + tone + details + relationship)
