@@ -548,6 +548,143 @@
                 }
             };
 
+            const download_card_as_image = async () => {
+                try {
+                    // Create a canvas
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    
+                    // Set canvas size (card proportions)
+                    canvas.width = 800;
+                    canvas.height = 600;
+                    
+                    // Get the card's background gradient
+                    const gradient_backgrounds = {
+                        birthday: ['#f472b6', '#a855f7', '#6366f1'],
+                        wedding: ['#fb7185', '#f9a8d4', '#ef4444'],
+                        barmitzvah: ['#60a5fa', '#8b5cf6', '#a855f7'],
+                        engagement: ['#fde047', '#fb923c', '#ef4444'],
+                        graduation: ['#4ade80', '#14b8a6', '#3b82f6'],
+                        newjob: ['#9ca3af', '#64748b', '#52525b'],
+                        holiday: ['#f59e0b', '#eab308', '#f97316'],
+                        anniversary: ['#ef4444', '#f43f5e', '#ec4899']
+                    };
+                    
+                    const event_colors = gradient_backgrounds[generated_card.eventType] || ['#3b82f6', '#8b5cf6'];
+                    
+                    // Create gradient background
+                    const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+                    gradient.addColorStop(0, event_colors[0]);
+                    gradient.addColorStop(0.5, event_colors[1]);
+                    gradient.addColorStop(1, event_colors[2] || event_colors[1]);
+                    
+                    // Fill background with gradient
+                    ctx.fillStyle = gradient;
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    
+                    // Draw white rounded rectangle for card content
+                    const card_padding = 60;
+                    const card_x = card_padding;
+                    const card_y = card_padding;
+                    const card_width = canvas.width - (card_padding * 2);
+                    const card_height = canvas.height - (card_padding * 2);
+                    const border_radius = 20;
+                    
+                    // Draw rounded rectangle background
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+                    ctx.beginPath();
+                    
+                    // Manual rounded rectangle implementation for better browser support
+                    ctx.moveTo(card_x + border_radius, card_y);
+                    ctx.lineTo(card_x + card_width - border_radius, card_y);
+                    ctx.quadraticCurveTo(card_x + card_width, card_y, card_x + card_width, card_y + border_radius);
+                    ctx.lineTo(card_x + card_width, card_y + card_height - border_radius);
+                    ctx.quadraticCurveTo(card_x + card_width, card_y + card_height, card_x + card_width - border_radius, card_y + card_height);
+                    ctx.lineTo(card_x + border_radius, card_y + card_height);
+                    ctx.quadraticCurveTo(card_x, card_y + card_height, card_x, card_y + card_height - border_radius);
+                    ctx.lineTo(card_x, card_y + border_radius);
+                    ctx.quadraticCurveTo(card_x, card_y, card_x + border_radius, card_y);
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                    // Set text properties for RTL Hebrew
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.direction = 'rtl';
+                    
+                    // Draw event icon (emoji)
+                    ctx.font = '80px Arial';
+                    ctx.fillStyle = '#333';
+                    ctx.fillText(generated_card.eventIcon, canvas.width / 2, card_y + 120);
+                    
+                    // Draw event title
+                    ctx.font = 'bold 36px Arial';
+                    ctx.fillStyle = '#1f2937';
+                    const event_title = generated_card.eventType === 'custom' 
+                        ? generated_card.customEventType 
+                        : event_types.find(e => e.value === generated_card.eventType)?.label;
+                    ctx.fillText(event_title, canvas.width / 2, card_y + 200);
+                    
+                    // Draw greeting text (multi-line)
+                    ctx.font = '24px Arial';
+                    ctx.fillStyle = '#374151';
+                    
+                    // Split text into lines that fit the card width
+                    const max_line_width = card_width - 80;
+                    const lines = wrap_text(ctx, generated_card.text, max_line_width);
+                    
+                    // Draw each line
+                    const line_height = 40;
+                    const start_y = card_y + 280;
+                    
+                    lines.forEach((line, index) => {
+                        ctx.fillText(line, canvas.width / 2, start_y + (index * line_height));
+                    });
+                    
+                    // Convert canvas to blob and download
+                    canvas.toBlob((blob) => {
+                        const url = URL.createObjectURL(blob);
+                        const download_link = document.createElement('a');
+                        download_link.href = url;
+                        download_link.download = `כרטיס-ברכה-${generated_card.recipientName}-${new Date().toLocaleDateString('he-IL')}.png`;
+                        document.body.appendChild(download_link);
+                        download_link.click();
+                        document.body.removeChild(download_link);
+                        URL.revokeObjectURL(url);
+                    }, 'image/png');
+                    
+                } catch (error) {
+                    console.error('Download failed:', error);
+                    alert('אירעה שגיאה בהורדת הכרטיס. אנא נסה שוב.');
+                }
+            };
+            
+            // Helper function to wrap text
+            const wrap_text = (ctx, text, max_width) => {
+                const words = text.split(' ');
+                const lines = [];
+                let current_line = '';
+                
+                for (let i = 0; i < words.length; i++) {
+                    const word = words[i];
+                    const test_line = current_line + word + ' ';
+                    const test_width = ctx.measureText(test_line).width;
+                    
+                    if (test_width > max_width && current_line !== '') {
+                        lines.push(current_line.trim());
+                        current_line = word + ' ';
+                    } else {
+                        current_line = test_line;
+                    }
+                }
+                
+                if (current_line.trim() !== '') {
+                    lines.push(current_line.trim());
+                }
+                
+                return lines;
+            };
+
             return (
                 <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4 hebrew-text">
                     <div className="max-w-4xl mx-auto">
@@ -745,9 +882,7 @@
                                 {/* כפתורי פעולה */}
                                 <div className="flex justify-center gap-4 flex-wrap">
                                     <button
-                                        onClick={() => {
-                                            alert('פונקציית ההורדה תתווסף בעדכון הבא');
-                                        }}
+                                        onClick={download_card_as_image}
                                         className="bg-green-600 text-white px-6 py-3 rounded-lg font-semibold flex items-center gap-2 hover:bg-green-700 transition-colors"
                                     >
                                         <Download size={20} />

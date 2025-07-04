@@ -201,3 +201,38 @@ greetingcardgenerator/
 - Conditional greeting generation based on extracted data
 - Fallback handling for missing information
 - Multi-layered personalization (name + tone + details + relationship)
+
+### Version 1.4.0 - Download Functionality Implementation
+**Date**: 2025-07-04
+
+**New Features**:
+- **Download Card as PNG**: Users can now download greeting cards as high-quality PNG images
+- **Canvas-based Image Generation**: HTML5 Canvas API used to create downloadable images
+- **Event-specific Backgrounds**: Downloaded images maintain the same gradient backgrounds as the web version
+- **Hebrew Text Support**: Proper RTL text rendering in downloaded images
+- **Automatic Filename Generation**: Files are named with recipient name and date in Hebrew format
+
+**Implementation Details**:
+- Added `download_card_as_image()` function with HTML5 Canvas API
+- Created gradient background matching web version colors
+- Implemented multi-line text wrapping for Hebrew content
+- Added rounded rectangle drawing with cross-browser compatibility
+- Integrated automatic download with proper filename generation
+- Canvas size: 800x600 pixels for optimal quality
+- Text rendering with proper Hebrew RTL support
+- Error handling for download failures
+
+**Technical Features**:
+- **Canvas Drawing**: 800x600 pixel canvas with gradient backgrounds
+- **Text Wrapping**: Automatic line breaks for long Hebrew text
+- **Cross-browser Support**: Manual rounded rectangle implementation
+- **File Naming**: Hebrew filename with recipient name and date
+- **Error Handling**: Graceful failure handling with Hebrew error messages
+- **Memory Management**: Proper cleanup of blob URLs after download
+
+**User Experience**:
+- Replaced placeholder "next update" message with functional download
+- Download button now creates and saves PNG image
+- Filename includes recipient name and current date
+- Visual feedback on download success/failure
+- Maintains card design consistency between web and downloaded versions
