@@ -8,6 +8,7 @@
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="config.js"></script>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎉</text></svg>">
     <script>
         // Suppress production warnings
@@ -160,6 +161,7 @@
             )
         );
 
+
         // Add error handling for missing dependencies
         if (typeof React === 'undefined' || typeof ReactDOM === 'undefined') {
             document.getElementById('root').innerHTML = `
@@ -224,17 +226,137 @@
             }
         }
 
-        // Mock Claude API for development with personalization
+        // Rate limiting utility
+        const rate_limiter = {
+            get_usage_data: () => {
+                const data = localStorage.getItem('api_usage_data');
+                if (!data) return { count: 0, resetTime: Date.now() + (24 * 60 * 60 * 1000) };
+                return JSON.parse(data);
+            },
+            
+            save_usage_data: (data) => {
+                localStorage.setItem('api_usage_data', JSON.stringify(data));
+            },
+            
+            can_make_request: () => {
+                const usage = rate_limiter.get_usage_data();
+                const now = Date.now();
+                
+                // Reset counter if 24 hours have passed
+                if (now >= usage.resetTime) {
+                    const new_usage = { count: 0, resetTime: now + (24 * 60 * 60 * 1000) };
+                    rate_limiter.save_usage_data(new_usage);
+                    return { allowed: true, remaining: 1500 };
+                }
+                
+                const daily_limit = window.API_CONFIG?.DAILY_LIMIT || 1500;
+                const remaining = daily_limit - usage.count;
+                
+                return { 
+                    allowed: usage.count < daily_limit, 
+                    remaining: remaining,
+                    resetTime: usage.resetTime 
+                };
+            },
+            
+            increment_usage: () => {
+                const usage = rate_limiter.get_usage_data();
+                usage.count += 1;
+                rate_limiter.save_usage_data(usage);
+            }
+        };
+
+        // Google Gemini API integration with rate limiting
+        const gemini_api = {
+            complete: async (prompt) => {
+                // Check rate limits first
+                const limit_check = rate_limiter.can_make_request();
+                if (!limit_check.allowed) {
+                    const reset_time = new Date(limit_check.resetTime).toLocaleString('he-IL');
+                    throw new Error(`חרגת מהמכסה היומית של 1500 בקשות. המכסה תתחדש ב: ${reset_time}`);
+                }
+                
+                // Get API key from configuration
+                const api_key = window.API_CONFIG && window.API_CONFIG.GEMINI_API_KEY !== 'YOUR_GEMINI_API_KEY_HERE' 
+                                ? window.API_CONFIG.GEMINI_API_KEY : null;
+                
+                if (!api_key) {
+                    throw new Error('מפתח API לא מוגדר. אנא פנה למפתח האפליקציה.');
+                }
+                
+                try {
+                    // Get API configuration
+                    const config = window.API_CONFIG || {};
+                    const api_endpoint = config.API_ENDPOINT || 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
+                    const generation_config = config.GENERATION_CONFIG || {
+                        temperature: 0.7,
+                        topK: 40,
+                        topP: 0.95,
+                        maxOutputTokens: 1024,
+                    };
+                    
+                    // Make API call to Google Gemini
+                    const response = await fetch(`${api_endpoint}?key=${api_key}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            contents: [{
+                                parts: [{
+                                    text: prompt
+                                }]
+                            }],
+                            generationConfig: generation_config
+                        })
+                    });
+                    
+                    if (!response.ok) {
+                        if (response.status === 401) {
+                            // Invalid API key
+                            throw new Error('מפתח API לא תקין. אנא פנה למפתח האפליקציה.');
+                        } else if (response.status === 429) {
+                            // Rate limit exceeded on server side
+                            throw new Error('השרת מדווח על חריגה מהמכסה. נסה שוב מאוחר יותר.');
+                        } else {
+                            throw new Error(`שגיאה בקריאה לשירות: ${response.status}`);
+                        }
+                    }
+                    
+                    const data = await response.json();
+                    
+                    if (data.candidates && data.candidates.length > 0) {
+                        // Increment usage counter on successful call
+                        rate_limiter.increment_usage();
+                        
+                        const generated_text = data.candidates[0].content.parts[0].text;
+                        return generated_text.trim();
+                    } else {
+                        throw new Error('לא התקבלה תשובה מהשירות');
+                    }
+                    
+                } catch (error) {
+                    console.error('Gemini API error:', error);
+                    
+                    // Fallback to mock API for development
+                    console.log('Falling back to mock API...');
+                    return await mock_claude_api.complete(prompt);
+                }
+            }
+        };
+
+        // Mock Claude API for development fallback
         const mock_claude_api = {
             complete: async (prompt) => {
                 // Simulate API delay
-                await new Promise(resolve => setTimeout(resolve, 2000));
+                await new Promise(resolve => setTimeout(resolve, 1000));
                 
                 // Extract information from prompt for personalization
                 const extract_info_from_prompt = (prompt) => {
                     const name_match = prompt.match(/שם:\s*([^\n\r]+)/);
                     const age_match = prompt.match(/גיל:\s*([^\n\r]+)/);
-                    const gender_match = prompt.match(/מין:\s*([^\n\r]+)/);
+                    const recipient_gender_match = prompt.match(/מין מקבל הברכה:\s*([^\n\r]+)/);
+                    const sender_gender_match = prompt.match(/מין כותב הברכה:\s*([^\n\r]+)/);
                     const relationship_match = prompt.match(/הקשר:\s*([^\n\r]+)/);
                     const tone_match = prompt.match(/בטון\s*([^\.\n\r]+)/);
                     const personal_match = prompt.match(/פרטים אישיים:\s*([^\n\r]+)/);
@@ -243,7 +365,8 @@
                     return {
                         name: name_match ? name_match[1].trim() : '',
                         age: age_match ? age_match[1].trim() : '',
-                        gender: gender_match ? gender_match[1].trim() : '',
+                        recipientGender: recipient_gender_match ? recipient_gender_match[1].trim() : '',
+                        senderGender: sender_gender_match ? sender_gender_match[1].trim() : '',
                         relationship: relationship_match ? relationship_match[1].trim() : '',
                         tone: tone_match ? tone_match[1].trim() : '',
                         personalDetails: personal_match ? personal_match[1].trim() : '',
@@ -253,8 +376,8 @@
 
                 const info = extract_info_from_prompt(prompt);
                 
-                // Helper function to get gender-appropriate text
-                const get_gender_forms = (gender) => {
+                // Helper function to get gender-appropriate text for recipient
+                const get_recipient_forms = (gender) => {
                     const is_male = gender === 'זכר';
                     return {
                         dear: is_male ? 'יקר' : 'יקרה',
@@ -280,66 +403,87 @@
                     };
                 };
 
+                // Helper function to get gender-appropriate text for sender
+                const get_sender_forms = (gender) => {
+                    const is_male = gender === 'זכר';
+                    return {
+                        wish: is_male ? 'מאחל' : 'מאחלת',
+                        found: is_male ? 'מצאתי' : 'מצאתי', // Same for both
+                        think: is_male ? 'חושב' : 'חושבת',
+                        remember: is_male ? 'זוכר' : 'זוכרת',
+                        hope: is_male ? 'מקווה' : 'מקווה', // Same for both
+                        believe: is_male ? 'מאמין' : 'מאמינה',
+                        happy: is_male ? 'שמח' : 'שמחה',
+                        proud: is_male ? 'גאה' : 'גאה', // Same for both
+                        excited: is_male ? 'מתרגש' : 'מתרגשת',
+                        blessed: is_male ? 'מבורך' : 'מבורכת',
+                        write: is_male ? 'כותב' : 'כותבת',
+                        send: is_male ? 'שולח' : 'שולחת',
+                        congratulate: is_male ? 'מברך' : 'מברכת'
+                    };
+                };
+
                 // Generate personalized response based on event type and extracted info
                 const generate_personalized_greeting = (event_type, info) => {
                     let greeting = '';
-                    const name = info.name || (info.gender === 'זכר' ? 'יקר' : 'יקרה');
+                    const name = info.name || (info.recipientGender === 'זכר' ? 'יקר' : 'יקרה');
                     const tone = info.tone || '';
-                    const gender_forms = get_gender_forms(info.gender);
-                    const is_male = info.gender === 'זכר';
+                    const recipient_forms = get_recipient_forms(info.recipientGender);
+                    const sender_forms = get_sender_forms(info.senderGender);
+                    const is_recipient_male = info.recipientGender === 'זכר';
                     
                     // Base greeting by event type
                     if (event_type.includes('יום הולדת')) {
                         if (tone.includes('מצחיק')) {
-                            greeting = `${name} ה${gender_forms.dear}, עוד שנה עברה ו${gender_forms.you} עדיין ${gender_forms.beautiful}! מזל טוב על יום ההולדת. שהשנה הבאה תביא לך הרבה צחוק, אושר ואולי קצת פחות נרות על העוגה!`;
+                            greeting = `${name} ה${recipient_forms.dear}, עוד שנה עברה ו${recipient_forms.you} עדיין ${recipient_forms.beautiful}! מזל טוב על יום ההולדת. אני ${sender_forms.wish} לך שהשנה הבאה תביא הרבה צחוק, אושר ואולי קצת פחות נרות על העוגה!`;
                         } else if (tone.includes('רשמי')) {
-                            greeting = `לכבוד ${name}, בהגיע יום הולדתך הנני להביע לך את ברכותיי הכנות. שתזכה לשנים רבות ונעימות מלאות בריאות ואושר.`;
+                            greeting = `לכבוד ${name}, בהגיע יום הולדתך הנני ${sender_forms.write} להביע לך את ברכותיי הכנות. אני ${sender_forms.wish} שתזכה לשנים רבות ונעימות מלאות בריאות ואושר.`;
                         } else if (tone.includes('רגשי')) {
-                            greeting = `${name} ה${gender_forms.beloved}, יום הולדתך הוא יום מיוחד עבור כל מי שאוהב אותך. ${gender_forms.you} ${gender_forms.brings} כל כך הרבה אור לחיים של האנשים סביבך. מזל טוב וש${gender_forms.continue} להיות הדמות ${gender_forms.special} ש${gender_forms.you}!`;
+                            greeting = `${name} ה${recipient_forms.beloved}, יום הולדתך הוא יום מיוחד עבור כל מי שאוהב אותך. ${recipient_forms.you} ${recipient_forms.brings} כל כך הרבה אור לחיים של האנשים סביבך. אני ${sender_forms.happy} ${sender_forms.congratulate} אותך וש${recipient_forms.continue} להיות הדמות ${recipient_forms.special} ש${recipient_forms.you}!`;
                         } else {
-                            greeting = `מזל טוב ${name} על יום הולדתך! שתזכה לשנה מלאה בבריאות, אושר והצלחה. שכל חלומותיך יתגשמו וש${gender_forms.continue} לשמח את כל הסובבים אותך.`;
+                            greeting = `מזל טוב ${name} על יום הולדתך! אני ${sender_forms.wish} שתזכה לשנה מלאה בבריאות, אושר והצלחה. שכל חלומותיך יתגשמו וש${recipient_forms.continue} לשמח את כל הסובבים אותך.`;
                         }
                     } else if (event_type.includes('חתונה')) {
                         if (tone.includes('מצחיק')) {
-                            greeting = `${name}, הגיע הזמן! אחרי כל השנים של "מתי ${gender_forms.getMarried}?" סוף סוף! מזל טוב על החתונה. שתמיד תזכרו שהמילים הכי חשובות בנישואין הן "${gender_forms.you} ${is_male ? 'צודק' : 'צודקת'} יקירי!"`;
+                            greeting = `${name}, הגיע הזמן! אחרי כל השנים של "מתי ${recipient_forms.getMarried}?" סוף סוף! אני ${sender_forms.happy} ${sender_forms.congratulate} אותך על החתונה. שתמיד תזכרו שהמילים הכי חשובות בנישואין הן "${recipient_forms.you} ${is_recipient_male ? 'צודק' : 'צודקת'} יקירי!"`;
                         } else if (tone.includes('רשמי')) {
-                            greeting = `לכבוד ${name}, בהזדמנות נישואיכם הבאתי להביע את ברכותיי הכנות. שתזכו לחיים משותפים מלאי אהבה, הבנה ואושר.`;
+                            greeting = `לכבוד ${name}, בהזדמנות נישואיכם אני ${sender_forms.write} להביע את ברכותיי הכנות. אני ${sender_forms.wish} שתזכו לחיים משותפים מלאי אהבה, הבנה ואושר.`;
                         } else {
-                            greeting = `מזל טוב ${name} על נישואיך! שתזכו לבית נאמן בישראל, מלא באהבה, כבוד הדדי ואושר אמיתי. שתבנו יחד עתיד מזהיר ומלא ברכה.`;
+                            greeting = `מזל טוב ${name} על נישואיך! אני ${sender_forms.wish} שתזכו לבית נאמן בישראל, מלא באהבה, כבוד הדדי ואושר אמיתי. שתבנו יחד עתיד מזהיר ומלא ברכה.`;
                         }
                     } else if (event_type.includes('נכד חדש') || event_type.includes('נכדה חדשה')) {
                         if (tone.includes('מצחיק')) {
-                            greeting = `${name}, מזל טוב על הנכד החדש! עכשיו ${gender_forms.you} רשמית ${gender_forms.grandpa} - זה אומר שאפשר לפנק בלי מוסר ולהחזיר הביתה! איזה כיף גדול מחכה לך.`;
+                            greeting = `${name}, מזל טוב על הנכד החדש! עכשיו ${recipient_forms.you} רשמית ${recipient_forms.grandpa} - זה אומר שאפשר לפנק בלי מוסר ולהחזיר הביתה! אני ${sender_forms.excited} בשבילך לקראת הכיף הגדול הזה.`;
                         } else if (tone.includes('רגשי')) {
-                            greeting = `${name} ה${gender_forms.dear}, איזה רגש מתוק ומיוחד! נכד חדש זה לא רק תינוק, זה המשך הדרך, חוליה נוספת בשרשרת האהבה שלכם. שתזכו להיות ${gender_forms.grandpa} ${is_male ? 'גאה' : 'גאה'} ולראות אותו גדל ופורח.`;
+                            greeting = `${name} ה${recipient_forms.dear}, איזה רגש מתוק ומיוחד! נכד חדש זה לא רק תינוק, זה המשך הדרך, חוליה נוספת בשרשרת האהבה שלכם. אני ${sender_forms.happy} בשבילכם ו${sender_forms.wish} שתזכו להיות ${recipient_forms.grandpa} ${is_recipient_male ? 'גאה' : 'גאה'} ולראות אותו גדל ופורח.`;
                         } else {
-                            greeting = `מזל טוב ${name} על הנכד החדש! איזה שמחה גדולה ומיוחדת. שתזכו לראות אותו גדל ומתפתח, ושתהיו ${gender_forms.grandpa} ${is_male ? 'גאה' : 'גאה'} ואוהבים. ברכות לכל המשפחה!`;
+                            greeting = `מזל טוב ${name} על הנכד החדש! איזה שמחה גדולה ומיוחדת. אני ${sender_forms.wish} שתזכו לראות אותו גדל ומתפתח, ושתהיו ${recipient_forms.grandpa} ${is_recipient_male ? 'גאה' : 'גאה'} ואוהבים. ברכות לכל המשפחה!`;
                         }
                     } else if (event_type.includes('עליה לארץ')) {
-                        greeting = `${name}, ברוכים הבאים הביתה! עליה לארץ היא התגשמות חלום. שתקלטו בקלות, תמצאו את מקומכם ותהנו מכל הטוב שיש לארץ להציע. בהצלחה במסע החדש!`;
+                        greeting = `${name}, ברוכים הבאים הביתה! עליה לארץ היא התגשמות חלום. אני ${sender_forms.excited} בשבילכם ו${sender_forms.wish} שתקלטו בקלות, תמצאו את מקומכם ותהנו מכל הטוב שיש לארץ להציע. בהצלחה במסע החדש!`;
                     } else {
-                        greeting = `מזל טוב ${name}! שתמיד תהיה ${gender_forms.surrounded} באהבה ובשמחה. שכל הטוב בעולם יגיע אליך ותמיד תמצא סיבות לחייך.`;
+                        greeting = `מזל טוב ${name}! אני ${sender_forms.wish} שתמיד תהיה ${recipient_forms.surrounded} באהבה ובשמחה. שכל הטוב בעולם יגיע אליך ותמיד תמצא סיבות לחייך.`;
                     }
                     
                     // Add personal details if provided
                     if (info.personalDetails) {
                         if (info.personalDetails.includes('רופא') || info.personalDetails.includes('רופאה')) {
-                            greeting += ` כ${gender_forms.doctor} ${gender_forms.skilled}, ${gender_forms.you} ${gender_forms.helper} לכל כך הרבה אנשים - הגיע הזמן שגם ${gender_forms.you} ${gender_forms.receive} חזרה את כל הטוב הזה.`;
+                            greeting += ` כ${recipient_forms.doctor} ${recipient_forms.skilled}, ${recipient_forms.you} ${recipient_forms.helper} לכל כך הרבה אנשים - אני ${sender_forms.think} שהגיע הזמן שגם ${recipient_forms.you} ${recipient_forms.receive} חזרה את כל הטוב הזה.`;
                         } else if (info.personalDetails.includes('מורה')) {
-                            greeting += ` המקצוע שלך כ${gender_forms.teacher} הוא מקצוע קדוש - ${gender_forms.you} ${gender_forms.shaper} את העתיד. תודה על כל מה ש${gender_forms.you} ${gender_forms.doer}.`;
+                            greeting += ` המקצוע שלך כ${recipient_forms.teacher} הוא מקצוע קדוש - ${recipient_forms.you} ${recipient_forms.shaper} את העתיד. אני ${sender_forms.wish} להודות לך על כל מה ש${recipient_forms.you} ${recipient_forms.doer}.`;
                         } else if (info.personalDetails.includes('מוסיקה') || info.personalDetails.includes('נגינה')) {
-                            greeting += ` כמו ש${gender_forms.you} ${gender_forms.brings} מוסיקה יפה לעולם, ככה החיים שלך מלאים במלודיות מתוקות.`;
+                            greeting += ` כמו ש${recipient_forms.you} ${recipient_forms.brings} מוסיקה יפה לעולם, אני ${sender_forms.believe} שהחיים שלך מלאים במלודיות מתוקות.`;
                         }
                     }
                     
                     // Add relationship context
                     if (info.relationship) {
                         if (info.relationship.includes('אח') || info.relationship.includes('אחות')) {
-                            greeting += ` כל הכבוד שיש לי ${gender_forms.sibling} כמוך!`;
+                            greeting += ` אני ${sender_forms.proud} שיש לי ${recipient_forms.sibling} כמוך!`;
                         } else if (info.relationship.includes('חבר')) {
-                            greeting += ` איזה מזל שיש לי ${gender_forms.friend} כמוך בחיים!`;
+                            greeting += ` איזה מזל שיש לי ${recipient_forms.friend} כמוך בחיים! אני ${sender_forms.blessed} בחברות הזו.`;
                         } else if (info.relationship.includes('עמית')) {
-                            greeting += ` העבודה איתך היא תמיד הנאה!`;
+                            greeting += ` העבודה איתך היא תמיד הנאה! אני ${sender_forms.happy} שאנחנו עמיתים.`;
                         }
                     }
                     
@@ -359,9 +503,9 @@
             }
         };
 
-        // Initialize Claude API
+        // Initialize API - use Gemini API with fallback to mock
         if (typeof window.claude === 'undefined') {
-            window.claude = mock_claude_api;
+            window.claude = gemini_api;
         }
 
         const GreetingCardGenerator = () => {
@@ -371,6 +515,7 @@
                 recipientName: '',
                 recipientAge: '',
                 recipientGender: '',
+                senderGender: '',
                 relationship: '',
                 personalDetails: '',
                 tone: [],
@@ -380,6 +525,7 @@
             const [generated_card, set_generated_card] = useState(null);
             const [is_generating, set_is_generating] = useState(false);
             const [error_message, set_error_message] = useState('');
+            const [show_settings, set_show_settings] = useState(false);
 
             const event_types = [
                 { value: 'birthday', label: 'יום הולדת', icon: '🎂' },
@@ -456,6 +602,10 @@
                     set_error_message('אנא בחר מין מקבל הברכה');
                     return false;
                 }
+                if (!form_data.senderGender) {
+                    set_error_message('אנא בחר את המין שלך (כותב הברכה)');
+                    return false;
+                }
                 return true;
             };
 
@@ -470,7 +620,8 @@
                 try {
                     const selected_event = event_types.find(e => e.value === form_data.eventType);
                     const selected_tones = form_data.tone.map(t => tones.find(tone => tone.value === t).label);
-                    const selected_gender = genders.find(g => g.value === form_data.recipientGender);
+                    const selected_recipient_gender = genders.find(g => g.value === form_data.recipientGender);
+                    const selected_sender_gender = genders.find(g => g.value === form_data.senderGender);
                     
                     // Determine event name for prompt
                     const event_name = form_data.eventType === 'custom' 
@@ -482,9 +633,12 @@
                     
                     פרטי מקבל הברכה:
                     - שם: ${form_data.recipientName}
-                    - מין: ${selected_gender.label}
+                    - מין מקבל הברכה: ${selected_recipient_gender.label}
                     ${form_data.recipientAge ? `- גיל: ${form_data.recipientAge}` : ''}
                     ${form_data.relationship ? `- הקשר: ${form_data.relationship}` : ''}
+                    
+                    פרטי כותב הברכה:
+                    - מין כותב הברכה: ${selected_sender_gender.label}
                     
                     ${form_data.personalDetails ? `פרטים אישיים: ${form_data.personalDetails}` : ''}
                     
@@ -499,6 +653,7 @@
                     - הקפד על טון ${selected_tones.join(' ו')}
                     - שלב את הפרטים האישיים בצורה חלקה
                     - השתמש בצורת הפנייה המתאימה למין המקבל (זכר/נקבה) - לדוגמה: "אתה/את", "יקר/יקרה", "מוכשר/מוכשרת"
+                    - השתמש בצורת דיבור המתאימה למין כותב הברכה (זכר/נקבה) - לדוגמה: "אני מאחל/מאחלת", "אני חושב/חושבת", "אני שמח/שמחה"
                     ${form_data.eventType === 'custom' ? `- התאם את הברכה ספציפית לאירוע "${form_data.customEventType}"` : ''}
                     
                     החזר רק את טקסט הברכה, ללא הסברים או הערות נוספות.
@@ -560,6 +715,7 @@
                     recipientName: '',
                     recipientAge: '',
                     recipientGender: '',
+                    senderGender: '',
                     relationship: '',
                     personalDetails: '',
                     tone: [],
@@ -730,6 +886,21 @@
                 return lines;
             };
 
+
+            const check_api_status = () => {
+                const api_key = window.API_CONFIG && window.API_CONFIG.GEMINI_API_KEY !== 'YOUR_GEMINI_API_KEY_HERE' 
+                                ? window.API_CONFIG.GEMINI_API_KEY : null;
+                
+                if (!api_key) {
+                    return 'ברכות דמויות (Demo)';
+                }
+                
+                const limit_check = rate_limiter.can_make_request();
+                const remaining = limit_check.remaining;
+                
+                return `Google Gemini API (${remaining}/1500 נותרו)`;
+            };
+
             return (
                 <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4 hebrew-text">
                     <div className="max-w-4xl mx-auto">
@@ -740,6 +911,9 @@
                                 <Sparkles className="text-purple-600" size={32} />
                             </div>
                             <p className="text-gray-600 text-lg">צור כרטיסי ברכה מותאמים אישית לכל אירוע</p>
+                            <div className="text-sm text-gray-500 mt-2">
+                                סטטוס: <span className="font-medium">{check_api_status()}</span>
+                            </div>
                         </div>
 
                         {error_message && (
@@ -855,6 +1029,30 @@
                                                         {gender.label}
                                                     </button>
                                                 ))}
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                המין שלך (כותב הברכה) *
+                                            </label>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                {genders.map(gender => (
+                                                    <button
+                                                        key={gender.value}
+                                                        onClick={() => handle_input_change('senderGender', gender.value)}
+                                                        className={`p-3 rounded-lg border-2 transition-all ${
+                                                            form_data.senderGender === gender.value
+                                                                ? 'border-blue-500 bg-blue-50 text-blue-700'
+                                                                : 'border-gray-200 hover:border-blue-300'
+                                                        }`}
+                                                    >
+                                                        {gender.label}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                            <div className="text-xs text-gray-500 mt-1">
+                                                נדרש לניסוח דקדוקי נכון (אני מאחל/מאחלת)
                                             </div>
                                         </div>
                                     </div>
