@@ -525,7 +525,8 @@
             const [generated_card, set_generated_card] = useState(null);
             const [is_generating, set_is_generating] = useState(false);
             const [error_message, set_error_message] = useState('');
-            const [show_settings, set_show_settings] = useState(false);
+            const [is_improving, set_is_improving] = useState(false);
+            const [improved_cards, set_improved_cards] = useState({});
 
             const event_types = [
                 { value: 'birthday', label: 'יום הולדת', icon: '🎂' },
@@ -552,26 +553,7 @@
                 { value: 'female', label: 'נקבה' }
             ];
 
-            // Load data from localStorage on component mount
-            useEffect(() => {
-                try {
-                    const saved_data = localStorage.getItem('greeting_card_form_data');
-                    if (saved_data) {
-                        set_form_data(JSON.parse(saved_data));
-                    }
-                } catch (error) {
-                    console.error('Failed to load saved data:', error);
-                }
-            }, []);
-
-            // Save data to localStorage whenever form_data changes
-            useEffect(() => {
-                try {
-                    localStorage.setItem('greeting_card_form_data', JSON.stringify(form_data));
-                } catch (error) {
-                    console.error('Failed to save data:', error);
-                }
-            }, [form_data]);
+            // No localStorage persistence - always start fresh
 
             const handle_input_change = (field, value) => {
                 set_form_data(prev => ({
@@ -708,6 +690,66 @@
                 return (eventType) => backgrounds[eventType] || 'bg-gradient-to-br from-blue-400 to-purple-400';
             }, []);
 
+            const improve_greeting_for_platform = async (platform) => {
+                if (!generated_card) return;
+                
+                set_is_improving(true);
+                set_error_message('');
+                
+                try {
+                    const sender_gender = genders.find(g => g.value === form_data.senderGender);
+                    const sender_forms = {
+                        want: sender_gender.label === 'זכר' ? 'רוצה' : 'רוצה', // Same for both
+                        improve: sender_gender.label === 'זכר' ? 'לשפר' : 'לשפר', // Same for both
+                        adapt: sender_gender.label === 'זכר' ? 'להתאים' : 'להתאים' // Same for both
+                    };
+                    
+                    const platform_instructions = {
+                        whatsapp: {
+                            name: 'WhatsApp',
+                            format: '- הוסף אמוג\'ים רלוונטיים\n- קצר יותר למסרון\n- יותר אישי וחברותי\n- השתמש בשפה יומיומית ופשוטה'
+                        },
+                        facebook: {
+                            name: 'Facebook',
+                            format: '- הוסף hashtags רלוונטיים בעברית\n- מתאים לפרסום פומבי\n- יותר פורמלי ומעוצב\n- ניתן להוסיף קריאה לפעולה (לייקים, תגובות)'
+                        }
+                    };
+                    
+                    const platform_config = platform_instructions[platform];
+                    
+                    const improvement_prompt = `
+                    קח את הברכה הבאה והתאם אותה ל${platform_config.name}:
+                    
+                    "${generated_card.text}"
+                    
+                    הנחיות להתאמה ל${platform_config.name}:
+                    ${platform_config.format}
+                    
+                    הנחיות כלליות:
+                    - שמור על המסר המקורי והטון
+                    - כתוב בעברית בלבד
+                    - התאם לפלטפורמה ${platform_config.name}
+                    - שמור על הדקדוק הנכון (זכר/נקבה)
+                    - אל תוסיף הסברים - רק את הברכה המותאמת
+                    
+                    החזר רק את הברכה המותאמת ל${platform_config.name}.
+                    `;
+
+                    const improved_text = await window.claude.complete(improvement_prompt);
+                    
+                    set_improved_cards(prev => ({
+                        ...prev,
+                        [platform]: improved_text
+                    }));
+                    
+                } catch (error) {
+                    console.error('שגיאה בשיפור הברכה:', error);
+                    set_error_message('אירעה שגיאה בשיפור הברכה. אנא נסה שוב.');
+                } finally {
+                    set_is_improving(false);
+                }
+            };
+
             const reset_form = () => {
                 set_form_data({
                     eventType: '',
@@ -722,6 +764,7 @@
                     additionalNotes: ''
                 });
                 set_generated_card(null);
+                set_improved_cards({});
                 set_error_message('');
             };
 
@@ -1155,6 +1198,87 @@
                                         </div>
                                     </div>
                                 </div>
+
+                                {/* הצעה לשיפור */}
+                                {!improved_cards.whatsapp && !improved_cards.facebook && (
+                                    <div className="bg-white/80 backdrop-blur-sm p-6 rounded-xl text-center border-2 border-dashed border-purple-300">
+                                        <h3 className="text-lg font-semibold text-gray-800 mb-3">
+                                            {form_data.senderGender === 'male' ? 'רוצה' : 'רוצה'} לשפר את הברכה ולהתאים לפלטפורמות?
+                                        </h3>
+                                        <p className="text-gray-600 mb-4">
+                                            {form_data.senderGender === 'male' ? 'אוכל' : 'אוכל'} להתאים את הברכה במיוחד ל-WhatsApp או Facebook
+                                        </p>
+                                        <div className="flex justify-center gap-3">
+                                            <button
+                                                onClick={() => improve_greeting_for_platform('whatsapp')}
+                                                disabled={is_improving}
+                                                className="bg-green-500 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 hover:bg-green-600 transition-colors disabled:opacity-50"
+                                            >
+                                                {is_improving ? (
+                                                    <div className="loading-spinner rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                                ) : (
+                                                    <span>📱</span>
+                                                )}
+                                                להתאים ל-WhatsApp
+                                            </button>
+                                            <button
+                                                onClick={() => improve_greeting_for_platform('facebook')}
+                                                disabled={is_improving}
+                                                className="bg-blue-500 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 hover:bg-blue-600 transition-colors disabled:opacity-50"
+                                            >
+                                                {is_improving ? (
+                                                    <div className="loading-spinner rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                                ) : (
+                                                    <span>📘</span>
+                                                )}
+                                                להתאים ל-Facebook
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* ברכות משופרות */}
+                                {(improved_cards.whatsapp || improved_cards.facebook) && (
+                                    <div className="space-y-4">
+                                        <h3 className="text-xl font-bold text-gray-800 text-center">ברכות מותאמות לפלטפורמות</h3>
+                                        
+                                        {improved_cards.whatsapp && (
+                                            <div className="bg-green-50 border-2 border-green-200 p-6 rounded-xl">
+                                                <div className="flex items-center gap-2 mb-3">
+                                                    <span className="text-2xl">📱</span>
+                                                    <h4 className="text-lg font-semibold text-green-800">מותאם ל-WhatsApp</h4>
+                                                </div>
+                                                <div className="text-gray-700 whitespace-pre-wrap font-medium hebrew-text">
+                                                    {improved_cards.whatsapp}
+                                                </div>
+                                                <button
+                                                    onClick={() => navigator.clipboard.writeText(improved_cards.whatsapp).then(() => alert('הברכה ל-WhatsApp הועתקה ללוח'))}
+                                                    className="mt-3 bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700 transition-colors"
+                                                >
+                                                    העתק ל-WhatsApp
+                                                </button>
+                                            </div>
+                                        )}
+                                        
+                                        {improved_cards.facebook && (
+                                            <div className="bg-blue-50 border-2 border-blue-200 p-6 rounded-xl">
+                                                <div className="flex items-center gap-2 mb-3">
+                                                    <span className="text-2xl">📘</span>
+                                                    <h4 className="text-lg font-semibold text-blue-800">מותאם ל-Facebook</h4>
+                                                </div>
+                                                <div className="text-gray-700 whitespace-pre-wrap font-medium hebrew-text">
+                                                    {improved_cards.facebook}
+                                                </div>
+                                                <button
+                                                    onClick={() => navigator.clipboard.writeText(improved_cards.facebook).then(() => alert('הברכה ל-Facebook הועתקה ללוח'))}
+                                                    className="mt-3 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 transition-colors"
+                                                >
+                                                    העתק ל-Facebook
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
 
                                 {/* כפתורי פעולה */}
                                 <div className="flex justify-center gap-4 flex-wrap">
