@@ -1018,9 +1018,9 @@
                                                     <button
                                                         key={event.value}
                                                         onClick={() => {
-                                                            handle_input_change('eventType', event.value);
+                                                            handleInputChange('eventType', event.value);
                                                             if (event.value !== 'custom') {
-                                                                handle_input_change('customEventType', '');
+                                                                handleInputChange('customEventType', '');
                                                             }
                                                         }}
                                                         className={`p-3 rounded-lg border-2 transition-all flex items-center gap-2 text-sm ${
@@ -1043,7 +1043,7 @@
                                                     <input
                                                         type="text"
                                                         value={formData.customEventType}
-                                                        onChange={(e) => handle_input_change('customEventType', e.target.value)}
+                                                        onChange={(e) => handleInputChange('customEventType', e.target.value)}
                                                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                                                         placeholder="לדוגמא: נכד חדש, עליה לארץ, יום הולדת 50..."
                                                     />
@@ -1058,7 +1058,7 @@
                                             <input
                                                 type="text"
                                                 value={formData.recipientName}
-                                                onChange={(e) => handle_input_change('recipientName', e.target.value)}
+                                                onChange={(e) => handleInputChange('recipientName', e.target.value)}
                                                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                                                 placeholder="הכנס שם..."
                                             />
@@ -1071,7 +1071,7 @@
                                             <input
                                                 type="text"
                                                 value={formData.recipientAge}
-                                                onChange={(e) => handle_input_change('recipientAge', e.target.value)}
+                                                onChange={(e) => handleInputChange('recipientAge', e.target.value)}
                                                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                                                 placeholder="לדוגמא: 25, 30..."
                                             />
@@ -1084,7 +1084,7 @@
                                             <input
                                                 type="text"
                                                 value={formData.relationship}
-                                                onChange={(e) => handle_input_change('relationship', e.target.value)}
+                                                onChange={(e) => handleInputChange('relationship', e.target.value)}
                                                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                                                 placeholder="לדוגמא: חבר, אח, עמית לעבודה..."
                                             />
@@ -1098,7 +1098,7 @@
                                                 {genders.map(gender => (
                                                     <button
                                                         key={gender.value}
-                                                        onClick={() => handle_input_change('recipientGender', gender.value)}
+                                                        onClick={() => handleInputChange('recipientGender', gender.value)}
                                                         className={`p-3 rounded-lg border-2 transition-all ${
                                                             formData.recipientGender === gender.value
                                                                 ? 'border-purple-500 bg-purple-50 text-purple-700'
@@ -1119,7 +1119,7 @@
                                                 {genders.map(gender => (
                                                     <button
                                                         key={gender.value}
-                                                        onClick={() => handle_input_change('senderGender', gender.value)}
+                                                        onClick={() => handleInputChange('senderGender', gender.value)}
                                                         className={`p-3 rounded-lg border-2 transition-all ${
                                                             formData.senderGender === gender.value
                                                                 ? 'border-blue-500 bg-blue-50 text-blue-700'
