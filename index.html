@@ -11,7 +11,7 @@
     <script>
         // API Configuration - embedded for production
         window.API_CONFIG = {
-            GEMINI_API_KEY: 'AIzaSyDIbA0Pb58Ahlnhg24lRZDCcjWZnw58Y64',
+            GEMINI_API_KEY: 'process.env.GOOGLE_API_KEY',
             API_ENDPOINT: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent',
             DAILY_LIMIT: 1500,
             RATE_LIMIT_WINDOW: 24 * 60 * 60 * 1000,
@@ -23,7 +23,7 @@
             }
         };
     </script>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎉</text></svg>">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='https://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎉</text></svg>">
     <script>
         // Suppress production warnings
         if (typeof process === 'undefined') {
@@ -56,12 +56,34 @@
             margin: 1rem 0;
         }
     </style>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.jsdelivr.net; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https:;">
 </head>
 <body>
     <div id="root"></div>
 
     <script type="text/babel" data-presets="react">
-        const { useState, useEffect, useMemo, useRef } = React;
+        const { useState, useEffect, useMemo, useCallback, useRef } = React;
+
+        // Constants
+        const CONSTANTS = {
+            CANVAS: {
+                WIDTH: 800,
+                HEIGHT: 600,
+                PADDING: 60,
+                BORDER_RADIUS: 20,
+                LINE_HEIGHT: 40
+            },
+            FONTS: {
+                ICON: '80px Arial',
+                TITLE: 'bold 36px Arial',
+                TEXT: '24px Arial'
+            },
+            COLORS: {
+                CARD_BG: 'rgba(255, 255, 255, 0.95)',
+                TEXT_PRIMARY: '#1f2937',
+                TEXT_SECONDARY: '#374151'
+            }
+        };
 
         // Simple SVG icon components to replace lucide-react
         const Heart = ({ size = 24, className = "" }) => (
@@ -523,7 +545,7 @@
         }
 
         const GreetingCardGenerator = () => {
-            const [form_data, set_form_data] = useState({
+            const [formData, setFormData] = useState({
                 eventType: '',
                 customEventType: '',
                 recipientName: '',
@@ -536,11 +558,11 @@
                 additionalNotes: ''
             });
             
-            const [generated_card, set_generated_card] = useState(null);
-            const [is_generating, set_is_generating] = useState(false);
-            const [error_message, set_error_message] = useState('');
-            const [is_improving, set_is_improving] = useState(false);
-            const [improved_cards, set_improved_cards] = useState({});
+            const [generatedCard, setGeneratedCard] = useState(null);
+            const [isGenerating, setIsGenerating] = useState(false);
+            const [errorMessage, setErrorMessage] = useState('');
+            const [isImproving, setIsImproving] = useState(false);
+            const [improvedCards, setImprovedCards] = useState({});
 
             const event_types = [
                 { value: 'birthday', label: 'יום הולדת', icon: '🎂' },
@@ -569,76 +591,76 @@
 
             // No localStorage persistence - always start fresh
 
-            const handle_input_change = (field, value) => {
-                set_form_data(prev => ({
+            const handleInputChange = useCallback((field, value) => {
+                setFormData(prev => ({
                     ...prev,
                     [field]: value
                 }));
-                set_error_message(''); // Clear error when user starts typing
-            };
+                setErrorMessage(''); // Clear error when user starts typing
+            }, []);
 
-            const validate_form = () => {
-                if (!form_data.eventType) {
-                    set_error_message('אנא בחר סוג אירוע');
+            const validateForm = useCallback(() => {
+                if (!formData.eventType) {
+                    setErrorMessage('אנא בחר סוג אירוע');
                     return false;
                 }
-                if (form_data.eventType === 'custom' && !form_data.customEventType.trim()) {
-                    set_error_message('אנא פרט את סוג האירוע');
+                if (formData.eventType === 'custom' && !formData.customEventType.trim()) {
+                    setErrorMessage('אנא פרט את סוג האירוע');
                     return false;
                 }
-                if (!form_data.recipientName.trim()) {
-                    set_error_message('אנא הכנס שם מקבל הברכה');
+                if (!formData.recipientName.trim()) {
+                    setErrorMessage('אנא הכנס שם מקבל הברכה');
                     return false;
                 }
-                if (!form_data.tone.length) {
-                    set_error_message('אנא בחר לפחות טון אחד לברכה');
+                if (!formData.tone.length) {
+                    setErrorMessage('אנא בחר לפחות טון אחד לברכה');
                     return false;
                 }
-                if (!form_data.recipientGender) {
-                    set_error_message('אנא בחר מין מקבל הברכה');
+                if (!formData.recipientGender) {
+                    setErrorMessage('אנא בחר מין מקבל הברכה');
                     return false;
                 }
-                if (!form_data.senderGender) {
-                    set_error_message('אנא בחר את המין שלך (כותב הברכה)');
+                if (!formData.senderGender) {
+                    setErrorMessage('אנא בחר את המין שלך (כותב הברכה)');
                     return false;
                 }
                 return true;
-            };
+            }, [formData]);
 
             const generate_greeting = async () => {
-                if (!validate_form()) {
+                if (!validateForm()) {
                     return;
                 }
 
-                set_is_generating(true);
-                set_error_message('');
+                setIsGenerating(true);
+                setErrorMessage('');
                 
                 try {
-                    const selected_event = event_types.find(e => e.value === form_data.eventType);
-                    const selected_tones = form_data.tone.map(t => tones.find(tone => tone.value === t).label);
-                    const selected_recipient_gender = genders.find(g => g.value === form_data.recipientGender);
-                    const selected_sender_gender = genders.find(g => g.value === form_data.senderGender);
+                    const selectedEvent = event_types.find(e => e.value === formData.eventType);
+                    const selectedTones = formData.tone.map(t => tones.find(tone => tone.value === t).label);
+                    const selectedRecipientGender = genders.find(g => g.value === formData.recipientGender);
+                    const selectedSenderGender = genders.find(g => g.value === formData.senderGender);
                     
                     // Determine event name for prompt
-                    const event_name = form_data.eventType === 'custom' 
-                        ? form_data.customEventType 
-                        : selected_event.label;
+                    const eventName = formData.eventType === 'custom' 
+                        ? formData.customEventType 
+                        : selectedEvent.label;
                     
                     const prompt = `
-                    צור ברכה מותאמת אישית עבור ${event_name} בטון ${selected_tones.join(' ו')}.
+                    צור ברכה מותאמת אישית עבור ${eventName} בטון ${selectedTones.join(' ו')}.
                     
                     פרטי מקבל הברכה:
-                    - שם: ${form_data.recipientName}
-                    - מין מקבל הברכה: ${selected_recipient_gender.label}
-                    ${form_data.recipientAge ? `- גיל: ${form_data.recipientAge}` : ''}
-                    ${form_data.relationship ? `- הקשר: ${form_data.relationship}` : ''}
+                    - שם: ${formData.recipientName}
+                    - מין מקבל הברכה: ${selectedRecipientGender.label}
+                    ${formData.recipientAge ? `- גיל: ${formData.recipientAge}` : ''}
+                    ${formData.relationship ? `- הקשר: ${formData.relationship}` : ''}
                     
                     פרטי כותב הברכה:
-                    - מין כותב הברכה: ${selected_sender_gender.label}
+                    - מין כותב הברכה: ${selectedSenderGender.label}
                     
-                    ${form_data.personalDetails ? `פרטים אישיים: ${form_data.personalDetails}` : ''}
+                    ${formData.personalDetails ? `פרטים אישיים: ${formData.personalDetails}` : ''}
                     
-                    ${form_data.additionalNotes ? `הערות נוספות: ${form_data.additionalNotes}` : ''}
+                    ${formData.additionalNotes ? `הערות נוספות: ${formData.additionalNotes}` : ''}
                     
                     הנחיות חשובות:
                     - כתוב בעברית בלבד
@@ -646,51 +668,51 @@
                     - השתמש בביטויים ישראליים טבעיים
                     - הימנע מביטויים קלישאתיים או גנריים
                     - התאם את האורך לסוג האירוע (2-4 משפטים)
-                    - הקפד על טון ${selected_tones.join(' ו')}
+                    - הקפד על טון ${selectedTones.join(' ו')}
                     - שלב את הפרטים האישיים בצורה חלקה
                     - השתמש בצורת הפנייה המתאימה למין המקבל (זכר/נקבה) - לדוגמה: "אתה/את", "יקר/יקרה", "מוכשר/מוכשרת"
                     - השתמש בצורת דיבור המתאימה למין כותב הברכה (זכר/נקבה) - לדוגמה: "אני מאחל/מאחלת", "אני חושב/חושבת", "אני שמח/שמחה"
-                    ${form_data.eventType === 'custom' ? `- התאם את הברכה ספציפית לאירוע "${form_data.customEventType}"` : ''}
+                    ${formData.eventType === 'custom' ? `- התאם את הברכה ספציפית לאירוע "${formData.customEventType}"` : ''}
                     
                     החזר רק את טקסט הברכה, ללא הסברים או הערות נוספות.
                     `;
 
                     const response = await window.claude.complete(prompt);
                     
-                    const card_data = {
+                    const cardData = {
                         text: response,
-                        eventType: form_data.eventType,
-                        customEventType: form_data.customEventType,
-                        recipientName: form_data.recipientName,
-                        eventIcon: selected_event.icon,
-                        eventName: event_name,
+                        eventType: formData.eventType,
+                        customEventType: formData.customEventType,
+                        recipientName: formData.recipientName,
+                        eventIcon: selectedEvent.icon,
+                        eventName: eventName,
                         createdAt: new Date().toISOString()
                     };
 
-                    set_generated_card(card_data);
+                    setGeneratedCard(cardData);
                     
                     // Save generated card to localStorage
                     try {
-                        const saved_cards = JSON.parse(localStorage.getItem('generated_cards') || '[]');
-                        saved_cards.push(card_data);
+                        const savedCards = JSON.parse(localStorage.getItem('generated_cards') || '[]');
+                        savedCards.push(cardData);
                         // Keep only last 10 cards
-                        if (saved_cards.length > 10) {
-                            saved_cards.splice(0, saved_cards.length - 10);
+                        if (savedCards.length > 10) {
+                            savedCards.splice(0, savedCards.length - 10);
                         }
-                        localStorage.setItem('generated_cards', JSON.stringify(saved_cards));
+                        localStorage.setItem('generated_cards', JSON.stringify(savedCards));
                     } catch (error) {
                         console.error('Failed to save generated card:', error);
                     }
                     
                 } catch (error) {
                     console.error('שגיאה ביצירת הברכה:', error);
-                    set_error_message('אירעה שגיאה ביצירת הברכה. אנא נסה שוב.');
+                    setErrorMessage('אירעה שגיאה ביצירת הברכה. אנא נסה שוב.');
                 } finally {
-                    set_is_generating(false);
+                    setIsGenerating(false);
                 }
             };
 
-            const get_card_background = useMemo(() => {
+            const getCardBackground = useMemo(() => {
                 const backgrounds = {
                     birthday: 'bg-gradient-to-br from-pink-400 via-purple-400 to-indigo-400',
                     wedding: 'bg-gradient-to-br from-rose-300 via-pink-300 to-red-300',
@@ -704,21 +726,21 @@
                 return (eventType) => backgrounds[eventType] || 'bg-gradient-to-br from-blue-400 to-purple-400';
             }, []);
 
-            const improve_greeting_for_platform = async (platform) => {
-                if (!generated_card) return;
+            const improveGreetingForPlatform = useCallback(async (platform) => {
+                if (!generatedCard) return;
                 
-                set_is_improving(true);
-                set_error_message('');
+                setIsImproving(true);
+                setErrorMessage('');
                 
                 try {
-                    const sender_gender = genders.find(g => g.value === form_data.senderGender);
-                    const sender_forms = {
-                        want: sender_gender.label === 'זכר' ? 'רוצה' : 'רוצה', // Same for both
-                        improve: sender_gender.label === 'זכר' ? 'לשפר' : 'לשפר', // Same for both
-                        adapt: sender_gender.label === 'זכר' ? 'להתאים' : 'להתאים' // Same for both
+                    const senderGender = genders.find(g => g.value === formData.senderGender);
+                    const senderForms = {
+                        want: senderGender.label === 'זכר' ? 'רוצה' : 'רוצה', // Same for both
+                        improve: senderGender.label === 'זכר' ? 'לשפר' : 'לשפר', // Same for both
+                        adapt: senderGender.label === 'זכר' ? 'להתאים' : 'להתאים' // Same for both
                     };
                     
-                    const platform_instructions = {
+                    const platformInstructions = {
                         whatsapp: {
                             name: 'WhatsApp',
                             format: '- הוסף אמוג\'ים רלוונטיים\n- קצר יותר למסרון\n- יותר אישי וחברותי\n- השתמש בשפה יומיומית ופשוטה'
@@ -729,43 +751,43 @@
                         }
                     };
                     
-                    const platform_config = platform_instructions[platform];
+                    const platformConfig = platformInstructions[platform];
                     
-                    const improvement_prompt = `
-                    קח את הברכה הבאה והתאם אותה ל${platform_config.name}:
+                    const improvementPrompt = `
+                    קח את הברכה הבאה והתאם אותה ל${platformConfig.name}:
                     
-                    "${generated_card.text}"
+                    "${generatedCard.text}"
                     
-                    הנחיות להתאמה ל${platform_config.name}:
-                    ${platform_config.format}
+                    הנחיות להתאמה ל${platformConfig.name}:
+                    ${platformConfig.format}
                     
                     הנחיות כלליות:
                     - שמור על המסר המקורי והטון
                     - כתוב בעברית בלבד
-                    - התאם לפלטפורמה ${platform_config.name}
+                    - התאם לפלטפורמה ${platformConfig.name}
                     - שמור על הדקדוק הנכון (זכר/נקבה)
                     - אל תוסיף הסברים - רק את הברכה המותאמת
                     
-                    החזר רק את הברכה המותאמת ל${platform_config.name}.
+                    החזר רק את הברכה המותאמת ל${platformConfig.name}.
                     `;
 
-                    const improved_text = await window.claude.complete(improvement_prompt);
+                    const improvedText = await window.claude.complete(improvementPrompt);
                     
-                    set_improved_cards(prev => ({
+                    setImprovedCards(prev => ({
                         ...prev,
-                        [platform]: improved_text
+                        [platform]: improvedText
                     }));
                     
                 } catch (error) {
                     console.error('שגיאה בשיפור הברכה:', error);
-                    set_error_message('אירעה שגיאה בשיפור הברכה. אנא נסה שוב.');
+                    setErrorMessage('אירעה שגיאה בשיפור הברכה. אנא נסה שוב.');
                 } finally {
-                    set_is_improving(false);
+                    setIsImproving(false);
                 }
-            };
+            }, [generatedCard, formData.senderGender]);
 
-            const reset_form = () => {
-                set_form_data({
+            const resetForm = useCallback(() => {
+                setFormData({
                     eventType: '',
                     customEventType: '',
                     recipientName: '',
@@ -777,34 +799,34 @@
                     tone: [],
                     additionalNotes: ''
                 });
-                set_generated_card(null);
-                set_improved_cards({});
-                set_error_message('');
-            };
+                setGeneratedCard(null);
+                setImprovedCards({});
+                setErrorMessage('');
+            }, []);
 
-            const handle_share = async () => {
+            const handleShare = useCallback(async () => {
                 try {
                     if (navigator.share) {
                         await navigator.share({
                             title: 'כרטיס ברכה',
-                            text: generated_card.text
+                            text: generatedCard.text
                         });
                     } else {
-                        await navigator.clipboard.writeText(generated_card.text);
+                        await navigator.clipboard.writeText(generatedCard.text);
                         alert('הברכה הועתקה ללוח');
                     }
                 } catch (error) {
                     console.error('Share failed:', error);
                     // Fallback to manual copy
                     try {
-                        await navigator.clipboard.writeText(generated_card.text);
+                        await navigator.clipboard.writeText(generatedCard.text);
                         alert('הברכה הועתקה ללוח');
                     } catch (clipboardError) {
                         console.error('Clipboard failed:', clipboardError);
                         alert('לא ניתן לשתף או להעתיק את הברכה');
                     }
                 }
-            };
+            }, [generatedCard]);
 
             const download_card_as_image = async () => {
                 try {
@@ -813,8 +835,8 @@
                     const ctx = canvas.getContext('2d');
                     
                     // Set canvas size (card proportions)
-                    canvas.width = 800;
-                    canvas.height = 600;
+                    canvas.width = CONSTANTS.CANVAS.WIDTH;
+                    canvas.height = CONSTANTS.CANVAS.HEIGHT;
                     
                     // Get the card's background gradient
                     const gradient_backgrounds = {
@@ -841,27 +863,27 @@
                     ctx.fillRect(0, 0, canvas.width, canvas.height);
                     
                     // Draw white rounded rectangle for card content
-                    const card_padding = 60;
-                    const card_x = card_padding;
-                    const card_y = card_padding;
-                    const card_width = canvas.width - (card_padding * 2);
-                    const card_height = canvas.height - (card_padding * 2);
-                    const border_radius = 20;
+                    const cardPadding = CONSTANTS.CANVAS.PADDING;
+                    const cardX = cardPadding;
+                    const cardY = cardPadding;
+                    const cardWidth = canvas.width - (cardPadding * 2);
+                    const cardHeight = canvas.height - (cardPadding * 2);
+                    const borderRadius = CONSTANTS.CANVAS.BORDER_RADIUS;
                     
                     // Draw rounded rectangle background
-                    ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+                    ctx.fillStyle = CONSTANTS.COLORS.CARD_BG;
                     ctx.beginPath();
                     
                     // Manual rounded rectangle implementation for better browser support
-                    ctx.moveTo(card_x + border_radius, card_y);
-                    ctx.lineTo(card_x + card_width - border_radius, card_y);
-                    ctx.quadraticCurveTo(card_x + card_width, card_y, card_x + card_width, card_y + border_radius);
-                    ctx.lineTo(card_x + card_width, card_y + card_height - border_radius);
-                    ctx.quadraticCurveTo(card_x + card_width, card_y + card_height, card_x + card_width - border_radius, card_y + card_height);
-                    ctx.lineTo(card_x + border_radius, card_y + card_height);
-                    ctx.quadraticCurveTo(card_x, card_y + card_height, card_x, card_y + card_height - border_radius);
-                    ctx.lineTo(card_x, card_y + border_radius);
-                    ctx.quadraticCurveTo(card_x, card_y, card_x + border_radius, card_y);
+                    ctx.moveTo(cardX + borderRadius, cardY);
+                    ctx.lineTo(cardX + cardWidth - borderRadius, cardY);
+                    ctx.quadraticCurveTo(cardX + cardWidth, cardY, cardX + cardWidth, cardY + borderRadius);
+                    ctx.lineTo(cardX + cardWidth, cardY + cardHeight - borderRadius);
+                    ctx.quadraticCurveTo(cardX + cardWidth, cardY + cardHeight, cardX + cardWidth - borderRadius, cardY + cardHeight);
+                    ctx.lineTo(cardX + borderRadius, cardY + cardHeight);
+                    ctx.quadraticCurveTo(cardX, cardY + cardHeight, cardX, cardY + cardHeight - borderRadius);
+                    ctx.lineTo(cardX, cardY + borderRadius);
+                    ctx.quadraticCurveTo(cardX, cardY, cardX + borderRadius, cardY);
                     ctx.closePath();
                     ctx.fill();
                     
@@ -871,32 +893,32 @@
                     ctx.direction = 'rtl';
                     
                     // Draw event icon (emoji)
-                    ctx.font = '80px Arial';
+                    ctx.font = CONSTANTS.FONTS.ICON;
                     ctx.fillStyle = '#333';
-                    ctx.fillText(generated_card.eventIcon, canvas.width / 2, card_y + 120);
+                    ctx.fillText(generatedCard.eventIcon, canvas.width / 2, cardY + 120);
                     
                     // Draw event title
-                    ctx.font = 'bold 36px Arial';
-                    ctx.fillStyle = '#1f2937';
-                    const event_title = generated_card.eventType === 'custom' 
-                        ? generated_card.customEventType 
-                        : event_types.find(e => e.value === generated_card.eventType)?.label;
-                    ctx.fillText(event_title, canvas.width / 2, card_y + 200);
+                    ctx.font = CONSTANTS.FONTS.TITLE;
+                    ctx.fillStyle = CONSTANTS.COLORS.TEXT_PRIMARY;
+                    const eventTitle = generatedCard.eventType === 'custom' 
+                        ? generatedCard.customEventType 
+                        : event_types.find(e => e.value === generatedCard.eventType)?.label;
+                    ctx.fillText(eventTitle, canvas.width / 2, cardY + 200);
                     
                     // Draw greeting text (multi-line)
-                    ctx.font = '24px Arial';
-                    ctx.fillStyle = '#374151';
+                    ctx.font = CONSTANTS.FONTS.TEXT;
+                    ctx.fillStyle = CONSTANTS.COLORS.TEXT_SECONDARY;
                     
                     // Split text into lines that fit the card width
-                    const max_line_width = card_width - 80;
-                    const lines = wrap_text(ctx, generated_card.text, max_line_width);
+                    const maxLineWidth = cardWidth - 80;
+                    const lines = wrapText(ctx, generatedCard.text, maxLineWidth);
                     
                     // Draw each line
-                    const line_height = 40;
-                    const start_y = card_y + 280;
+                    const lineHeight = CONSTANTS.CANVAS.LINE_HEIGHT;
+                    const startY = cardY + 280;
                     
                     lines.forEach((line, index) => {
-                        ctx.fillText(line, canvas.width / 2, start_y + (index * line_height));
+                        ctx.fillText(line, canvas.width / 2, startY + (index * lineHeight));
                     });
                     
                     // Convert canvas to blob and download
@@ -904,7 +926,7 @@
                         const url = URL.createObjectURL(blob);
                         const download_link = document.createElement('a');
                         download_link.href = url;
-                        download_link.download = `כרטיס-ברכה-${generated_card.recipientName}-${new Date().toLocaleDateString('he-IL')}.png`;
+                        download_link.download = `כרטיס-ברכה-${generatedCard.recipientName}-${new Date().toLocaleDateString('he-IL')}.png`;
                         document.body.appendChild(download_link);
                         download_link.click();
                         document.body.removeChild(download_link);
@@ -918,30 +940,30 @@
             };
             
             // Helper function to wrap text
-            const wrap_text = (ctx, text, max_width) => {
+            const wrapText = useCallback((ctx, text, maxWidth) => {
                 const words = text.split(' ');
                 const lines = [];
-                let current_line = '';
+                let currentLine = '';
                 
                 for (let i = 0; i < words.length; i++) {
                     const word = words[i];
-                    const test_line = current_line + word + ' ';
-                    const test_width = ctx.measureText(test_line).width;
+                    const testLine = currentLine + word + ' ';
+                    const testWidth = ctx.measureText(testLine).width;
                     
-                    if (test_width > max_width && current_line !== '') {
-                        lines.push(current_line.trim());
-                        current_line = word + ' ';
+                    if (testWidth > maxWidth && currentLine !== '') {
+                        lines.push(currentLine.trim());
+                        currentLine = word + ' ';
                     } else {
-                        current_line = test_line;
+                        currentLine = testLine;
                     }
                 }
                 
-                if (current_line.trim() !== '') {
-                    lines.push(current_line.trim());
+                if (currentLine.trim() !== '') {
+                    lines.push(currentLine.trim());
                 }
                 
                 return lines;
-            };
+            }, []);
 
 
             const check_api_status = () => {
