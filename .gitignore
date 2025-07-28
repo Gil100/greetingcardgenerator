@@ -59,6 +59,10 @@ Desktop.ini
 *.swo
 *~
 
+# Claude Code
+.claude/
+logs/
+
 # Temporary files
 *.tmp
 *.temp
