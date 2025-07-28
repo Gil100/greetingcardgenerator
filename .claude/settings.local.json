@@ -9,7 +9,17 @@
       "mcp__playwright__browser_take_screenshot",
       "mcp__playwright__browser_click",
       "mcp__playwright__browser_type",
-      "mcp__playwright__browser_wait_for"
+      "mcp__playwright__browser_wait_for",
+      "WebFetch(domain:ai.google.dev)",
+      "Bash(python3:*)",
+      "Bash(pkill:*)",
+      "Bash(grep:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git config:*)",
+      "Bash(git push:*)",
+      "mcp__playwright__browser_network_requests",
+      "mcp__playwright__browser_handle_dialog"
     ],
     "deny": []
   }

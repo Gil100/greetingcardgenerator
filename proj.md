@@ -282,3 +282,97 @@ greetingcardgenerator/
 - **Form Reset**: All existing form fields preserved and enhanced
 - **localStorage**: Updated to handle new data structure
 - **Error Handling**: Graceful handling of missing gender information
+
+### Version 1.6.0 - Real AI Integration with Google Gemini API
+**Date**: 2025-07-06
+
+**Major AI Enhancement**:
+- **Google Gemini API Integration**: Replaced mock API with real Google Gemini 1.5 Flash API
+- **Free API Access**: Users can get free API keys with 1,500 requests per day limit
+- **Intelligent Fallback System**: Automatic fallback to sophisticated mock API if real API fails
+- **Secure API Key Management**: Browser-based localStorage storage with user control
+
+**New Features**:
+- **Settings Interface**: Added settings button with API key management
+- **API Status Indicator**: Real-time display of current API status (Real AI vs Demo)
+- **One-Click Setup**: Guided API key setup with direct links to Google AI Studio
+- **Error Handling**: Comprehensive error handling for API failures, rate limits, and invalid keys
+
+**API Integration Details**:
+- **Model**: Google Gemini 1.5 Flash for optimal speed and quality
+- **Temperature**: 0.7 for creative yet coherent Hebrew content generation
+- **Max Tokens**: 1024 tokens for detailed greeting generation
+- **Hebrew Support**: Native Hebrew language understanding and generation
+- **Personalization**: Full utilization of all form inputs (age, gender, relationship, personal details)
+
+**Security Implementation**:
+- **Client-Side Storage**: API keys stored only in user's browser localStorage
+- **No Server Transmission**: All API communication happens directly from browser
+- **User Control**: Users can add, update, or remove API keys at any time
+- **Transparent Status**: Clear indication of whether real AI or demo mode is active
+
+**User Experience Improvements**:
+- **Seamless Integration**: No changes required to existing workflow
+- **Graceful Degradation**: App works fully without API key (using intelligent mock)
+- **Clear Instructions**: Step-by-step API setup guidance in Hebrew
+- **Status Visibility**: Always shows current AI service status
+
+**Technical Implementation**:
+- **RESTful Integration**: Direct REST API calls to Google Gemini endpoints
+- **Error Recovery**: Automatic fallback chain (Real API → Mock API → Error handling)
+- **Rate Limit Handling**: Specific handling for API rate limit responses
+- **Authentication**: Secure API key handling with validation
+
+**Benefits**:
+- **Truly Intelligent Content**: Real AI understands context and generates unique, natural Hebrew greetings
+- **Cost Effective**: Free tier supports significant usage (1,500 requests/day)
+- **No Dependencies**: Maintained single-file HTML architecture
+- **Backward Compatible**: Existing users can continue using mock API seamlessly
+
+**Example Improvement**:
+- **Before (Mock)**: "מזל טוב דני על יום הולדתך! שתזכה לשנה מלאה בבריאות ואושר..."
+- **After (Real AI)**: "דני היקר, מזל טוב על יום הולדת ה-30! איזה מסע מדהים עברת עד כה - מהתחלת הקריירה בהייטק ועד להיות אבא גאה. שהשנה הבאה תביא לך עוד הצלחות מקצועיות ושמחות משפחתיות!"
+
+### Version 1.7.0 - Dual Gender Grammar Support
+**Date**: 2025-07-06
+
+**Critical Grammar Fix**:
+- **Sender Gender Field**: Added mandatory sender gender selection for proper Hebrew grammar
+- **Dual Gender System**: Both sender (writer) and recipient genders now captured and used
+- **Proper Hebrew Conjugations**: Fixed all sender-perspective verb forms (מאחל/מאחלת, חושב/חושבת, etc.)
+- **Enhanced Mock AI**: Sophisticated dual-gender Hebrew generation system
+
+**New Features**:
+- **Sender Gender Selection**: New required field "המין שלך (כותב הברכה)"
+- **Distinguished UI**: Recipient gender (purple) vs sender gender (blue) color coding
+- **Comprehensive Validation**: Both genders required before greeting generation
+- **Grammar Explanations**: Hebrew tooltip explaining importance of sender gender
+
+**Hebrew Grammar Improvements**:
+- **Sender Verbs**: מאחל/מאחלת, חושב/חושבת, שמח/שמחה, גאה/גאה, מתרגש/מתרגשת
+- **Perspective Accuracy**: First-person statements now grammatically correct
+- **Natural Flow**: Sentences like "אני מאחלת לך" vs "אני מאחל לך" based on actual sender gender
+- **Real AI Integration**: Gemini API receives both genders for accurate generation
+
+**Technical Implementation**:
+- **Dual Gender Forms**: `get_recipient_forms()` and `get_sender_forms()` helper functions
+- **Enhanced Extraction**: Mock AI extracts both "מין מקבל הברכה" and "מין כותב הברכה"
+- **Comprehensive Prompts**: Real AI receives detailed gender instructions for both perspectives
+- **Form Data Structure**: Updated to include `senderGender` field with automatic persistence
+
+**User Experience**:
+- **Clear Labeling**: Distinct labels for recipient vs sender gender selection
+- **Visual Distinction**: Different color schemes to avoid confusion
+- **Educational Tooltip**: Explains grammar necessity to users
+- **Seamless Integration**: No workflow changes, just enhanced accuracy
+
+**Grammar Examples Fixed**:
+- **Before**: "אבל אני מאחל לך" (generic, could be wrong)
+- **After**: "אבל אני מאחלת לך" (female sender) or "אבל אני מאחל לך" (male sender)
+- **Before**: "אני חושב שאת נהדרת" (assuming male sender)
+- **After**: "אני חושבת שאת נהדרת" (confirmed female sender)
+
+**Backward Compatibility**:
+- **Form Reset**: All existing fields preserved
+- **localStorage**: Automatic migration to include sender gender
+- **Validation**: Graceful handling of legacy data without sender gender
